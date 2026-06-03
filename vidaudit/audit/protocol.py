@@ -61,7 +61,9 @@ def build_readout(n_features: int, *, reducer: str = "none", n_components: int =
 
 
 def _num(frame: pd.DataFrame, feats: Sequence[str]) -> pd.DataFrame:
-    return frame[list(feats)].apply(pd.to_numeric, errors="coerce")
+    # coerce to float64 so the readout is identical regardless of the read backend
+    # (numpy vs pandas pyarrow dtypes for wide feature tables)
+    return frame[list(feats)].apply(pd.to_numeric, errors="coerce").astype("float64")
 
 
 def run_logo(df: pd.DataFrame, feats: Sequence[str], **opts) -> Dict:
@@ -109,7 +111,7 @@ def run_rvr(df: pd.DataFrame, feats: Sequence[str], **opts) -> Optional[Dict]:
     sources = sorted(real["generator"].astype(str).unique().tolist())
     if len(sources) < 2:
         return None
-    y = (real["generator"].astype(str) == sources[-1]).astype(int).values
+    y = (real["generator"].astype(str) == sources[-1]).astype(int).to_numpy()
     X = _num(real, feats)
     X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2, stratify=y, random_state=SEED)
     pipe = build_readout(len(feats), **opts).fit(X_tr, y_tr)

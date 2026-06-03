@@ -35,6 +35,7 @@ def main(argv=None) -> int:
     ev.add_argument("--n-components", type=int, default=13)
     ev.add_argument("--classifier", default="lr", choices=["lr", "xgboost"])
     ev.add_argument("--inner-cv", action="store_true", help="5-fold inner CV over C (LR only)")
+    ev.add_argument("--arrow", action="store_true", help="read the CSV with the pandas pyarrow backend (faster on wide tables)")
 
     tr = sub.add_parser("train", help="train a detector that ships a recipe [in progress]")
     tr.add_argument("model")
@@ -53,9 +54,9 @@ def main(argv=None) -> int:
     if args.cmd == "eval":
         if args.features:
             import json
-            import pandas as pd
             from vidaudit.audit.protocol import audit_features
-            df = pd.read_csv(args.features)
+            from vidaudit.data.cells import read_feature_table
+            df = read_feature_table(args.features, arrow=args.arrow)
             rec = audit_features(
                 df, args.feature_cols, subset=args.subset, reducer=args.reducer,
                 n_components=args.n_components, classifier=args.classifier, inner_cv=args.inner_cv,

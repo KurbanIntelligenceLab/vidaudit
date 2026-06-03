@@ -25,6 +25,13 @@ META_COLS = {
 }
 
 
+def read_feature_table(path: str, *, arrow: bool = False) -> pd.DataFrame:
+    """Load a feature CSV. `arrow=True` uses the pandas pyarrow backend (faster and
+    lighter on wide tables, e.g. 1024-d FVMD features); the audit engine coerces
+    features to float either way, so results are identical."""
+    return pd.read_csv(path, dtype_backend="pyarrow") if arrow else pd.read_csv(path)
+
+
 def resolve_feature_cols(df: pd.DataFrame, spec: Union[str, Sequence[str], None]) -> List[str]:
     """Resolve feature columns from a spec.
 
