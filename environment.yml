@@ -54,3 +54,5 @@ dependencies:
       - mlcroissant~=1.1.0       # Croissant metadata for the data package
       - safetensors~=0.7.0
       - spectrum~=0.10.0          # Burg AR PSD for the motion spectral features (RAFT / TemporalSpec)
+      - loguru~=0.7.3             # used by the vendored FVMD package
+      - prettytable~=3.17.0       # used by the vendored FVMD package

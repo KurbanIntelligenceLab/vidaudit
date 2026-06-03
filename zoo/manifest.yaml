@@ -20,8 +20,8 @@ fvmd:
   backbone: "PIPs++ persistent point tracker"
   weights:
     - file: pips2_weights.pth
-      url: "PLACEHOLDER: PIPs++ public release URL (fill when the FVMD wrapper lands)"
-      sha256: ""
+      url: "https://github.com/ljh0v0/FVMD-frechet-video-motion-distance/releases/download/pips2_weights/pips2_weights.pth"
+      sha256: ""   # public release; fill after first download if you want verification
       size_mb: null
 
 nsgvd:

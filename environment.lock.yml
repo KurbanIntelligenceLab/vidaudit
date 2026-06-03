@@ -256,6 +256,7 @@ dependencies:
       - huggingface-hub==1.17.0
       - jsonpath-rw==1.4.0
       - line-profiler==5.0.2
+      - loguru==0.7.3
       - mlcroissant==1.1.0
       - multidict==6.7.1
       - multiprocess==0.70.19
@@ -264,6 +265,7 @@ dependencies:
       - pexpect==4.9.0
       - platformdirs==4.10.0
       - ply==3.11
+      - prettytable==3.17.0
       - propcache==0.5.2
       - ptyprocess==0.7.0
       - pyarrow==24.0.0
