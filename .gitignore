@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# OS / editors
+.DS_Store
+*.swp
+
+# Logs / scratch
+*.log
+logs/
+results/scratch/
+
+# Large data + weights (hosted via HuggingFace / LFS, not git)
+*.pth
+*.ckpt
+*.safetensors
+*.npy
+*.npz
+*.pkl
+vidaudit/data/cache/
+vidaudit/data/raw/
+data/raw/
+data/cache/
+
+# Big feature dumps (the standardized features ship via the HF dataset, not git);
+# small curated tables (e.g. leaderboard.csv) are tracked explicitly.
+features/
+*.features.csv
+!leaderboard.csv
