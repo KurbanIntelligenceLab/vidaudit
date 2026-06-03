@@ -45,6 +45,8 @@ def main(argv=None) -> int:
     ex.add_argument("--kind", default="auto", choices=["auto", "features", "score"])
     ex.add_argument("--weights", default=None,
                     help="local checkpoint path for a weighted detector (else fetched from the zoo)")
+    ex.add_argument("--adm-ckpt", default=None,
+                    help="NSG-VD only: path to the ADM diffusion model (256x256_diffusion_uncond.pt)")
 
     tr = sub.add_parser("train", help="train a detector that ships a recipe [in progress]")
     tr.add_argument("model")
@@ -66,6 +68,8 @@ def main(argv=None) -> int:
         det = get(args.model)
         if args.weights:
             det.load_weights(args.weights)
+        if getattr(args, "adm_ckpt", None) and hasattr(det, "adm_ckpt"):
+            det.adm_ckpt = args.adm_ckpt        # NSG-VD's second checkpoint
         df = extract_table(det, clips_from_manifest(args.manifest), kind=args.kind, out=args.out)
         print(f"extracted {len(df)} rows -> {args.out}")
         return 0
