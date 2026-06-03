@@ -1,52 +1,169 @@
 <h1 align="center">VidAudit</h1>
-<p align="center"><b>An audited benchmark, leaderboard, and toolkit for AI-generated video detection.</b></p>
 
-VidAudit is a standardized, **audited** evaluation suite for **AI-generated, synthetic, and deepfake video detection**. Clone it to evaluate any detector under one rigorous protocol, retrain detectors that ship training code, or drop in your own method behind a small plugin API and land on a shared, audited leaderboard.
+<p align="center">
+  <b>An audited benchmark, leaderboard, and toolkit for AI-generated video detection.</b><br>
+  <sub>Evaluate any detector under one rigorous protocol. Train any method through a uniform script. Add your own behind a small plugin API.</sub>
+</p>
 
-It exists because every AI-video-detection paper currently evaluates differently, a 20-paper survey shows none apply all six standard controls, and high leaderboard AUCs do not predict deployable recall. VidAudit makes the audited protocol the default and makes fair, reproducible comparison a single command.
+<p align="center">
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-green.svg"></a>
+  <img alt="Python" src="https://img.shields.io/badge/python-3.14-blue.svg">
+  <img alt="Audit protocol" src="https://img.shields.io/badge/audit-P1--P6-8A2BE2.svg">
+  <a href="#"><img alt="HuggingFace dataset" src="https://img.shields.io/badge/%F0%9F%A4%97%20dataset-coming-lightgrey.svg"></a>
+  <a href="#"><img alt="Leaderboard Space" src="https://img.shields.io/badge/%F0%9F%A4%97%20leaderboard-coming-lightgrey.svg"></a>
+  <a href="#"><img alt="arXiv" src="https://img.shields.io/badge/arXiv-coming-b31b1b.svg"></a>
+</p>
+
+VidAudit is a standardized, **audited** evaluation suite for **AI-generated, synthetic, and deepfake video detection**. It exists because every AI-video-detection paper currently evaluates differently, a 20-paper survey shows none apply all six standard controls, and high leaderboard AUCs do not predict deployable recall. VidAudit makes the audited protocol the default and makes fair, reproducible comparison (and honest re-ranking by deployability) a single command.
+
+---
+
+## 🏆 Audited leaderboard
+
+Every detector is scored on the **matched 27k-clip GenVidBench cell** under leave-one-generator-out (LOGO) evaluation. The headline number papers report is **LOGO-OOD AUC**. The audit adds three columns that decide whether that number is real: the **real-vs-real floor** (`RvR`), the **above-floor margin**, and **deployable recall** (`TPR@0.1%`). Sorted by OOD AUC, so you can watch high-AUC methods separate from genuinely robust ones.
+
+| # | Model | LOGO-OOD AUC ↑ | RvR floor | Margin ↑ | TPR@0.1% ↑ | Verdict |
+|--:|---|:--:|:--:|:--:|:--:|---|
+| 1 | **WaveRep** | 0.996 | 0.534 | +0.462 | **0.816** | ✅ Certified, usable |
+| 2 | **XSFF** (ours) | 0.946 | 0.604 | +0.342 | _pending_ | ✅ Certified |
+| 3 | **ReStraV** | 0.931 | 0.586 | +0.345 | 0.634 | ✅ Certified, usable |
+| 4 | **D3** | 0.887 | 0.421 | +0.466 | _pending_ | ✅ Certified (native head) |
+| 5 | **FVMD** | 0.880 | 0.574 | +0.306 | 0.027 | ⚠️ Certified, collapses @0.1% |
+| 6 | **TemporalSpec+aug** (ours) | 0.871 | 0.634 | +0.237 | _pending_ | ✅ Certified |
+| 7 | **RAFT** | 0.855 | 0.627 | +0.228 | 0.020 | ⚠️ Certified, collapses @0.1% |
+| 8 | **CLIP** | 0.852 | 0.766 | +0.086 | 0.238 | ❌ Caught (dataset identity) |
+| 9 | **TemporalSpec** (ours) | 0.832 | 0.643 | +0.189 | 0.024 | ⚠️ Certified, collapses @0.1% |
+| 10 | **NSG-VD** | 0.660 | 0.596 | +0.064 | _pending_ | ❌ Near-floor (rides identity) |
+
+> **Existence proof.** A trivial 3-feature **clip-length probe** scores **0.998** AUC under an unaudited protocol and **0.529** after the P2 leakage filter. That gap is why the audit exists: a near-perfect leaderboard score can be almost entirely confound. See the paper for the full derivation.
+
+**How to read the verdict.**
+- ✅ **Certified**: clears its real-vs-real floor by a wide margin, genuine cross-generator signal.
+- ✅ **Certified, usable**: also keeps useful recall at a deployable false-positive rate.
+- ⚠️ **Certified, collapses @0.1%**: strong AUC, but recall at FPR = 0.1% falls to near zero. The ranking and the deployability disagree.
+- ❌ **Caught (dataset identity)**: a high real-vs-real AUC means the score largely reflects *which dataset the reals came from*, not generation artifacts.
+- ❌ **Near-floor**: barely exceeds the dataset-identity floor at all.
+
+**Column definitions.**
+- **LOGO-OOD AUC**: leave-one-generator-out AUC on held-out generators.
+- **RvR floor**: real-vs-real AUC (separating two *real* datasets). An artifact-based detector should sit near 0.5 here; a high value means dataset-identity leakage.
+- **Margin**: LOGO-OOD minus RvR, the real generalization remaining above the floor.
+- **TPR@0.1%**: true-positive rate at a 0.1% false-positive operating point (deployable recall).
+
+<sub>Numbers from the WACV 2027 audit (matched 27k GenVidBench cell, native head or uniform L2-LR readout per method). Bootstrap CIs, the full 116k cell, and the combined GenVidBench + AIGVDBench cross-dataset cell are reported in the paper and will land here as the data package ships. `_pending_` operating points are computed but not yet folded into this table.</sub>
+
+---
 
 ## What's inside
-- **Six-control audit protocol (P1–P6)** — canonical re-encode, clip-length leakage audit, real-vs-real dataset-identity floor, matched-harness re-training, multi-seed/bootstrap CIs, and a true cross-dataset cell.
-- **Audited leaderboard** — every detector scored on a matched cell and labeled *certified / caught (dataset identity) / collapses (operating point) / leakage*, with the full audited metric tuple (AUC, above-floor margin, TPR@FPR=1%/0.1%, calibration), not just AUC.
-- **Model zoo** — published-weight detectors wrapped behind one plugin API.
-- **Standardized data package** — per-clip features + LOGO splits + provenance + Croissant metadata, combining GenVidBench and AIGVDBench (bring-your-own-videos; we don't redistribute source clips).
-- **Unified eval + training scripts** — `python run.py eval --model X` and `python run.py train --model X`.
+- **Six-control audit protocol (P1-P6)**: canonical re-encode, clip-length leakage filter, real-vs-real dataset-identity floor, matched-harness re-training, multi-seed/bootstrap CIs, and a true cross-dataset cell.
+- **Audited leaderboard**: every detector labeled by the two verdicts above, with the full metric tuple (AUC, above-floor margin, TPR@FPR, calibration), not just AUC.
+- **Model zoo**: published-weight detectors behind one plugin API, with verifiable download links.
+- **Standardized data package**: per-clip features, LOGO splits, provenance, and Croissant metadata, combining GenVidBench and AIGVDBench (bring-your-own-videos; we do not redistribute source clips).
+- **Unified eval + training**: `python run.py eval <model>` and a uniform, fully overridable trainer driven by shell scripts.
 
-## Quickstart
+## Installation
 ```bash
-pip install -e .
-python run.py eval --model temporalspec --cell genvidbench27k   # audit one detector
-python run.py leaderboard                                       # (re)render the audited board
+git clone <repo-url> vidaudit && cd vidaudit
+conda env create -f environment.yml     # one unified env for the whole repo
+conda activate vidaudit
+pip install -e .                         # register vidaudit (editable); runtime deps come from conda
+```
+One environment covers everything (audit, figures, video/codec tooling, deep backbones, training). Apple Silicon (MPS) and Linux/CUDA are both supported; heavy GPU runs are meant for a cluster, the same spec works locally for development. Dependencies are pinned to ranges in `environment.yml`; for a byte-exact environment, use `conda env create -f environment.lock.yml` instead.
+
+## Usage
+```bash
+# Evaluate a detector through the full P1-P6 audit -> one leaderboard row
+python run.py eval temporalspec --cell genvidbench27k          # [in progress]
+
+# (Re)render the audited leaderboard from results
+python run.py leaderboard                                      # [in progress]
+
+# Train / retrain a method that ships a recipe (defaults in the shell script)
+scripts/train/restrav.sh --set loss=focal loss_kwargs.gamma=2.0 lr=5e-5   # [in progress]
+
+# Fetch published weights or the data package (download + sha256-verify + cache)
+python run.py fetch-weights waverep                            # [planned]
+python run.py fetch-data genvidbench                           # [planned]
 ```
 
-## Add your method (plugin API)
-Subclass `Detector`, implement the native head (and optionally features/training), and register it. The audit, metrics, and leaderboard row come for free:
+## Add your own detector (plugin API)
+Subclass `Detector`, set a `DetectorSpec`, implement at least one evidence interface, and register it. The audit, metrics, and leaderboard row come for free:
 ```python
 from vidaudit.detectors import Detector, DetectorSpec, register
 
 @register("mymethod")
 class MyMethod(Detector):
-    spec = DetectorSpec(name="MyMethod", published_weights=True, training_code=False,
-                        backbone="ViT-L/14", family="frame-pixel", paper="arXiv:25xx")
-    def score(self, clip):            # native head -> p(generated)
+    spec = DetectorSpec(name="MyMethod", family="appearance", backbone="ViT-L/14",
+                        published_weights=True, trainable=False, paper="arXiv:25xx")
+
+    def score(self, clip):        # native head -> p(generated)
         return my_model(clip.path)
-# python run.py eval --model mymethod   ->   P1-P6 audit + a leaderboard row
+
+    # optional: features(clip) for the uniform L2-LR readout,
+    #           load_weights() for download-and-evaluate,
+    #           build_model()/default_train_config() to be trainable.
+# python run.py eval mymethod   ->   P1-P6 audit + a leaderboard row
+```
+A detector has three orthogonal capabilities: **evaluate** (`score` and/or `features`), **load weights** (`load_weights`), and **train** (`build_model` + `default_train_config`, driven by the standard trainer). Training-free methods simply leave `trainable=False`. See `FRAMEWORK.md` for the full contract.
+
+## Add a dataset
+Datasets live behind a registry, so the audit pipeline never changes. A new benchmark is a thin adapter:
+```python
+from vidaudit.data.datasets import VideoDataset, DatasetSpec, register_dataset
+
+@register_dataset("mybench")
+class MyBench(VideoDataset):
+    spec = DatasetSpec(name="mybench", generators=[...],
+                       real_sources=["src_a", "src_b"],   # >=2 enables the RvR floor; <2 auto-disables it
+                       fetch=<recipe>)                      # reconstruct clips locally (no redistribution)
+    def clips(self, split, cell):
+        ...   # yield Clip objects with provenance
+# now available everywhere:  --dataset mybench   (and combinable:  --dataset genvidbench+mybench)
 ```
 
-## Model zoo (seed roster)
-| detector | backbone | weights | role |
-|---|---|---|---|
-| TemporalSpec | codec motion vectors | ours | white-box control |
-| D3 | XCLIP-ViT-B/16 | training-free | published detector |
-| ReStraV | DINOv2 ViT-S/14 | public | published detector |
-| WaveRep | DINOv2 ViT-B/14 + wavelet aug | public | published detector |
-| NSG-VD | per repo | public | published detector |
-| FVMD / RAFT / CLIP | point-tracker / optical flow / CLIP-B/32 | repurposed | reference baselines |
+## Model zoo and weights
+Published-weight baselines, wrapped behind the plugin API. Weights are fetched on demand (download + sha256-verify + cache), or you point at a local path.
 
-See `FRAMEWORK.md` for the full design, the plugin contract, and the build roadmap.
+| Detector | Family | Backbone | Weights | Download |
+|---|---|---|---|---|
+| TemporalSpec (ours) | codec | codec motion vectors (13-d) | ours | [⬇](#) _(coming)_ |
+| D3 | appearance | XCLIP-ViT-B/16 | training-free | n/a |
+| ReStraV | appearance | DINOv2 ViT-S/14 | public | [⬇](#) _(coming)_ |
+| WaveRep | forensic | DINOv2 ViT-B/14 + wavelet aug | public | [⬇](#) _(coming)_ |
+| NSG-VD | forensic | diffusion noise-score | public (ckpts) | [⬇](#) _(coming)_ |
+| FVMD | motion | PIPs++ point tracker | metric | n/a |
+| RAFT | motion | RAFT-Large optical flow | pretrained | [⬇](#) _(coming)_ |
+| CLIP | appearance | CLIP-ViT-B/32 | pretrained | [⬇](#) _(coming)_ |
 
-## Data
-We **cannot redistribute** the GenVidBench / AIGVDBench source videos (copyright). VidAudit ships the standardized **features, splits, provenance labels, and the canonical-pipeline recipe**; `vidaudit/data/fetch.py` reconstructs clips from the original sources on your machine.
+Excluded for now (no public weights): **DeMamba** (authors withhold the checkpoints, GitHub issues #5/#16/#21), DeCoF / ATSS / CMTA / VidGuard-R1 (no release). On a "wanted: weights" list.
+
+## Data package
+We **cannot redistribute** the GenVidBench / AIGVDBench source videos (copyright). VidAudit ships the standardized **per-clip features, LOGO splits, provenance labels, and the canonical-pipeline recipe**; `vidaudit/data/fetch.py` reconstructs clips from the original sources on your machine.
+
+- 🤗 **HuggingFace dataset**: [`vidaudit/...`](#) _(coming)_
+- 🤗 **Leaderboard Space**: [`vidaudit/leaderboard`](#) _(coming)_
+- Croissant metadata: _(coming)_
+
+## Training
+Training is a first-class, standardized subsystem. Defaults live in `scripts/train/<model>.sh`; the hyperparameters you care about (loss, optimizer, augmentation, schedule) are name-addressable registries you can extend, and everything is overridable on the command line:
+```bash
+# documented defaults in the script; user overrides via --set (no code edits)
+scripts/train/waverep.sh --set loss=focal loss_kwargs.gamma=2.0 lr=5e-5 augment=heavy
+```
+For the paper we run **eval only** (published weights and native heads through the audit); the trainer ships and is validated, but we do not retrain methods to manufacture results.
+
+## Roadmap
+- [x] Plugin API (eval / load-weights / train as three orthogonal capabilities)
+- [x] Unified conda environment
+- [x] First audited rows (D3-native, NSG-VD) and the baseline leaderboard above
+- [ ] Audit backend ported into `vidaudit/audit/` (P1-P6, metrics, verdict, leaderboard render) `[in progress]`
+- [ ] Verified detector wrappers for the full zoo `[in progress]`
+- [ ] `run.py` CLI (eval / train / leaderboard / fetch) `[in progress]`
+- [ ] Standardized data package + weight hosting + Croissant `[planned]`
+- [ ] HuggingFace dataset + leaderboard Space `[planned]`
+- [ ] AIGVDBench combined cross-dataset cell (D3 re-run at XCLIP-B/16) `[planned]`
+
+See `FRAMEWORK.md` for the full design, the plugin contract, and the build phases.
 
 ## Citation
 ```bibtex
@@ -59,7 +176,7 @@ We **cannot redistribute** the GenVidBench / AIGVDBench source videos (copyright
 ```
 
 ## License
-MIT (see `LICENSE`).
+MIT (see `LICENSE`). Wrapped detectors and datasets retain their original licenses; see each entry in the model zoo and data package.
 
 ---
-<sub>Keywords: AI-generated video detection, synthetic video detection, deepfake video detection, video forensics, generative video benchmark, detection leaderboard, evaluation toolkit, model zoo, GenVidBench, AIGVDBench.</sub>
+<sub>Keywords: AI-generated video detection, synthetic video detection, deepfake video detection, video forensics, generative video benchmark, detection leaderboard, evaluation toolkit, model zoo, GenVidBench, AIGVDBench, AIGC video, diffusion video detection.</sub>

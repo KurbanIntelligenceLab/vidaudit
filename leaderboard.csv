@@ -1,0 +1,15 @@
+model,ours,family,backbone,weights,benchmark,cell,readout,logo_id,logo_ood,rvr,pauc10,tpr1,tpr01,brier,ece,cost_ms,status,paper,source,notes
+WaveRep,0,forensic,DINOv2 ViT-B/14 + wavelet aug,public,GenVidBench,matched-27k,native-LLR,0.996,0.996,0.534,0.98,0.935,0.816,0.026,0.039,420,,"Corvi et al. 2025, NeurIPS (arXiv:2506.16802)",waverep_native_readout.json,
+XSFF,1,fusion,codec MV + DINOv2/ReStraV (34-d),ours,GenVidBench,matched-27k,L2-LR,0.996,0.946,0.604,,,,,,24,,ours (WACV 2027),Paper/Results,MV+ReStraV fusion
+ReStraV,0,appearance,DINOv2 ViT-S/14 (21-d),public,GenVidBench,matched-27k,L2-LR,0.995,0.931,0.586,0.871,0.726,0.634,0.097,0.12,10,,"Interno et al. 2025, NeurIPS (arXiv:2507.00583)",restrav_native_head.md,published balanced AUC 0.996; native MLP head 0.901 at RvR 0.633
+D3,0,appearance,XCLIP-ViT-B/16,training-free,GenVidBench,matched-27k,native-head,0.887,0.887,0.421,,,,,,50,,"Zheng et al. 2025, ICCV (arXiv:2508.00701)",_aigvd_d3_native,"training-free, so ID equals OOD"
+FVMD,0,motion,PIPs++ point tracker (1024-d),metric,GenVidBench,matched-27k,L2-LR,0.924,0.88,0.574,0.705,0.107,0.027,0.127,0.087,59,,FVMD (Liu et al. 2024),Paper/Results,
+TemporalSpec+aug,1,codec,codec motion vectors (20-d),ours,GenVidBench,matched-27k,LightGBM,0.96,0.871,0.634,,,,,,15,,ours (WACV 2027),Paper/Results,
+RAFT,0,motion,RAFT-Large optical flow (T0+T1),pretrained,GenVidBench,matched-27k,L2-LR,0.901,0.855,0.627,0.65,0.11,0.02,0.158,0.104,400,,RAFT (Teed and Deng 2020),Paper/Results,
+CLIP,0,appearance,CLIP-ViT-B/32,pretrained,GenVidBench,matched-27k,L2-LR,0.945,0.852,0.766,0.782,0.417,0.238,0.128,0.094,67,,CLIP (Radford et al. 2021),Paper/Results,rides dataset identity (high RvR)
+TemporalSpec,1,codec,codec motion vectors (13-d),ours,GenVidBench,matched-27k,L2-LR,0.909,0.832,0.643,0.665,0.13,0.024,0.166,0.106,14,,ours (WACV 2027),Paper/Results,white-box control
+NSG-VD,0,forensic,diffusion noise-score (2-d),public-ckpts,GenVidBench,matched-27k,L2-LR,0.696,0.66,0.596,,,,,,,,"Zhang et al. 2025, NeurIPS (arXiv:2510.08073)",nsgvd_readout_sweep.json,best readout (lr); published-weights method that nearly collapses under the audit
+clip-length probe,1,artifact,clip length / non-I-frame count (3-d),n/a,GenVidBench,matched-27k,L2-LR,,0.998,,,,,,,,leakage,ours (existence proof),Paper/Results,"0.998 unaudited, falls to 0.529 under the P2 K-frame filter"
+TemporalSpec,1,codec,codec motion vectors (13-d),ours,GenVidBench,full-116k,L2-LR,0.904,0.819,0.628,,,,,,,,ours (WACV 2027),Paper/Results,full unmatched cell
+D3,0,appearance,XCLIP-ViT-B/16,training-free,AIGVDBench,aigvd-2284,native-head,0.771,0.771,,,,,,,50,,"Zheng et al. 2025, ICCV (arXiv:2508.00701)",_aigvd_d3_native,"2025 generators (Wan2.1 0.659); RvR n/a (one real source); run used B/32, re-run at B/16"
+DeMamba,0,appearance,Mamba SSM,withheld,GenVidBench,matched-27k,,,,,,,,,,,excluded,Chen et al. 2024 (arXiv:2405.19707),,pretrained weights withheld (GitHub issues #5/#16/#21); cannot re-score

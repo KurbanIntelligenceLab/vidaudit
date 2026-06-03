@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vidaudit"
+version = "0.0.1"
+description = "Audited evaluation, training, and leaderboard toolkit for AI-generated video detection"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+# Runtime dependencies are provided by the unified conda env (environment.yml). Kept empty
+# so `pip install -e .` inside the env is a fast, conflict-free editable register of the package.
+dependencies = []
+
+[tool.setuptools.packages.find]
+include = ["vidaudit*"]

@@ -1,0 +1,54 @@
+# Unified conda env for the whole vidaudit toolkit.
+#   conda env create -f environment.yml  &&  conda activate vidaudit
+#
+# Pinned to ranges for reproducibility; environment.lock.yml is the exact snapshot.
+# torch is from conda-forge, not pip (pip's torch bundles a 2nd OpenMP runtime that
+# aborts with "OMP Error #15" on macOS).
+name: vidaudit
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python=3.14
+
+  # --- scientific core (audit metrics, matched-cell L2-LR readout, CSV/leaderboard) ---
+  - numpy>=2.4,<3
+  - scipy>=1.17,<2
+  - scikit-learn>=1.9,<2
+  - pandas>=3.0,<4
+  - pyyaml>=6.0,<7
+  - tabulate>=0.10,<1
+
+  # --- gradient-boosted readouts used in the audit sweeps ---
+  - lightgbm>=4.6,<5
+  - xgboost>=3.2,<4
+
+  # --- video / codec: P1 canonical re-encode, P2 K-frame filter, TemporalSpec motion vectors ---
+  - ffmpeg>=8,<9
+  - av>=17,<18          # PyAV: codec motion-vector extraction (imports as `av`)
+  - opencv>=4.13,<5
+
+  # --- figures + leaderboard rendering ---
+  - matplotlib>=3.10,<4
+
+  # --- deep backbones (DINOv2, XCLIP, CLIP, RAFT): from conda-forge, NOT pip, so the
+  #     whole stack shares ONE OpenMP runtime (see header re "OMP Error #15"). ---
+  - pytorch>=2.10,<3
+  - torchvision>=0.26,<1
+
+  # --- utilities + tests ---
+  - tqdm>=4.67,<5
+  - rich>=15,<16
+  - requests>=2.34,<3
+  - pytest>=9,<10
+  - pip
+
+  # --- pip (backbone hubs + data/weights distribution) ---
+  - pip:
+      - transformers>=5.10,<6     # XCLIP, CLIP via HuggingFace
+      - timm>=1.0,<2              # DINOv2 backbones
+      - open_clip_torch>=3.3,<4   # CLIP variants
+      - huggingface_hub>=1.17,<2  # weights + data fetch/verify/cache
+      - datasets>=4.8,<5          # HuggingFace data package
+      - mlcroissant>=1.1,<2       # Croissant metadata for the data package
+      - safetensors>=0.7,<1

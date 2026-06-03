@@ -1,6 +1,6 @@
 """Detector registry: `@register("name")` makes a detector discoverable by the
-CLI (`run.py eval --model name`) and the leaderboard. Importing a detector module
-registers it as a side effect; `aigvaudit.detectors` imports all wrappers.
+CLI (`run.py eval name`) and the leaderboard. Importing a detector module
+registers it as a side effect; `vidaudit.detectors` imports all wrappers.
 """
 from __future__ import annotations
 
