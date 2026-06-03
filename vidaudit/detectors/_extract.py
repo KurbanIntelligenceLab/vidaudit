@@ -64,20 +64,35 @@ def decode_clip(path, n_frames: int = 8, size: int = 224, window_sec=None) -> np
     return out
 
 
-def decode_pil(path, n_frames: int = 12):
-    """Decode n_frames uniformly as native-resolution PIL RGB images.
+def decode_pil(path, n_frames: int = 12, window_sec=None):
+    """Decode n_frames as native-resolution PIL RGB images.
 
-    For HuggingFace image processors (e.g. CLIP) that do their own aspect-preserving
-    resize + centre-crop, so we must not pre-distort to a square here.
+    For methods that do their own resize/crop (CLIP's processor, WaveRep's center-crop),
+    so we must not pre-distort to a square. With `window_sec` set, samples across a
+    centred window (WaveRep/ReStraV protocol); otherwise across the whole clip.
     """
     import av
     from PIL import Image
     with av.open(str(path)) as container:
+        stream = container.streams.video[0]
+        fps = float(stream.average_rate) if stream.average_rate else 24.0
         frames = [f.to_ndarray(format="rgb24") for f in container.decode(video=0)]
     if not frames:
         raise RuntimeError(f"empty decode: {path}")
     T = len(frames)
-    if T >= n_frames:
+    if window_sec is not None and T > n_frames and fps > 0:
+        dur = T / fps
+        center = dur / 2.0
+        half = min(window_sec / 2.0, center, dur - center)
+        if half <= 0:
+            idx = np.linspace(0, T - 1, n_frames).round().astype(int)
+        else:
+            sf = max(0, int(round((center - half) * fps)))
+            ef = min(T - 1, int(round((center + half) * fps)))
+            idx = (np.full(n_frames, sf, int) if ef <= sf
+                   else np.linspace(sf, ef, n_frames).round().astype(int))
+        idx = np.clip(idx, 0, T - 1).tolist()
+    elif T >= n_frames:
         idx = np.linspace(0, T - 1, n_frames).round().astype(int).tolist()
     else:
         idx = list(range(T)) + [T - 1] * (n_frames - T)

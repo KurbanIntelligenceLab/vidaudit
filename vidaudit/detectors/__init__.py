@@ -12,7 +12,7 @@ from .registry import all_detectors, get, register  # noqa: F401
 from . import temporalspec    # noqa: F401,E402
 from . import d3              # noqa: F401,E402
 from . import restrav         # noqa: F401,E402
-# from . import waverep       # noqa: F401
+from . import waverep         # noqa: F401,E402
 # from . import nsgvd         # noqa: F401
 # from . import fvmd          # noqa: F401
 from . import raft            # noqa: F401,E402

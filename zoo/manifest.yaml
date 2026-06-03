@@ -1,0 +1,35 @@
+# Model-zoo published weights: download + sha256-verify + cache (see vidaudit/zoo.py).
+# Checkpoints are hosted on funded storage; fill each `url` after upload. Until a URL
+# is set, fetch_weights raises a clear message and you can pass a local path instead:
+#   run.py extract <model> --weights /path/to/ckpt
+# or  detector.load_weights("/path/to/ckpt").
+
+waverep:
+  paper: "Corvi et al., NeurIPS 2025 (arXiv:2506.16802)"
+  license: "GRIP-UNINA / NVIDIA, non-commercial"
+  backbone: "timm vit_base_patch14_reg4_dinov2.lvd142m (img_size=504, num_classes=1)"
+  weights:
+    - file: weights_dinov2_G4.ckpt
+      url: "PLACEHOLDER: upload weights_dinov2_G4.ckpt to funded storage, then set this URL"
+      sha256: "50d639049d928986ba7d69861a4fe4f3e7afbba1843e3e089cdf6b4748f53d5b"
+      size_mb: 331
+
+fvmd:
+  paper: "FVMD (Liu et al., 2024)"
+  license: "MIT (PIPs++ point tracker)"
+  backbone: "PIPs++ persistent point tracker"
+  weights:
+    - file: pips2_weights.pth
+      url: "PLACEHOLDER: PIPs++ public release URL (fill when the FVMD wrapper lands)"
+      sha256: ""
+      size_mb: null
+
+nsgvd:
+  paper: "Zhang et al., NeurIPS 2025 (arXiv:2510.08073)"
+  license: "see NSG-VD repo"
+  backbone: "SingleSwinBlock diffusion-noise-score discriminator (per-generator ckpts)"
+  weights:
+    - file: standard-Pika-mp.pth
+      url: "PLACEHOLDER: upload NSG-VD per-generator ckpts to funded storage, then set URL"
+      sha256: ""
+      size_mb: 2

@@ -43,6 +43,8 @@ def main(argv=None) -> int:
                     help="clips CSV with (video_id, generator, label, is_real, mp4_path)")
     ex.add_argument("--out", required=True, help="output feature CSV (feeds `eval --features`)")
     ex.add_argument("--kind", default="auto", choices=["auto", "features", "score"])
+    ex.add_argument("--weights", default=None,
+                    help="local checkpoint path for a weighted detector (else fetched from the zoo)")
 
     tr = sub.add_parser("train", help="train a detector that ships a recipe [in progress]")
     tr.add_argument("model")
@@ -62,6 +64,8 @@ def main(argv=None) -> int:
         from vidaudit.detectors._extract import clips_from_manifest, extract_table
         from vidaudit.detectors.registry import get
         det = get(args.model)
+        if args.weights:
+            det.load_weights(args.weights)
         df = extract_table(det, clips_from_manifest(args.manifest), kind=args.kind, out=args.out)
         print(f"extracted {len(df)} rows -> {args.out}")
         return 0
