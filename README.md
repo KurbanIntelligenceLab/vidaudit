@@ -57,9 +57,9 @@ Every detector is scored on the **matched 27k-clip GenVidBench cell** under leav
 ## What's inside
 - **Six-control audit protocol (P1-P6)**: canonical re-encode, clip-length leakage filter, real-vs-real dataset-identity floor, matched-harness re-training, multi-seed/bootstrap CIs, and a true cross-dataset cell.
 - **Audited leaderboard**: every detector labeled by the two verdicts above, with the full metric tuple (AUC, above-floor margin, TPR@FPR, calibration), not just AUC.
-- **Model zoo**: published-weight detectors behind one plugin API, with verifiable download links.
+- **Model zoo**: 8 detectors behind one plugin API; backbones auto-download or load published checkpoints (sha256-verified via the zoo).
 - **Standardized data package**: per-clip features, LOGO splits, provenance, and Croissant metadata, combining GenVidBench and AIGVDBench (bring-your-own-videos; we do not redistribute source clips).
-- **Unified eval + training**: `python run.py eval <model>` and a uniform, fully overridable trainer driven by shell scripts.
+- **Unified CLI**: `run.py extract` (clips → features) → `run.py eval` (audit → verdicts) → `run.py leaderboard`, plus a uniform, overridable trainer driven by shell scripts.
 
 ## Installation
 ```bash
@@ -72,19 +72,21 @@ One environment covers everything (audit, figures, video/codec tooling, deep bac
 
 ## Usage
 ```bash
-# Evaluate a detector through the full P1-P6 audit -> one leaderboard row
-python run.py eval temporalspec --cell genvidbench27k          # [in progress]
+# 1. Extract a detector's per-clip features from your clips -> a CSV
+python run.py extract restrav --manifest clips.csv --out restrav.csv
+python run.py extract waverep --manifest clips.csv --out waverep.csv \
+       --weights /path/to/weights_dinov2_G4.ckpt        # weighted detectors take a checkpoint
 
-# (Re)render the audited leaderboard from results
-python run.py leaderboard                                      # [in progress]
+# 2. Audit the feature table -> the full metric tuple + both verdicts (one leaderboard record)
+python run.py eval --features restrav.csv --subset baseline_clip_subset.csv
 
-# Train / retrain a method that ships a recipe (defaults in the shell script)
-scripts/train/restrav.sh --set loss=focal loss_kwargs.gamma=2.0 lr=5e-5   # [in progress]
-
-# Fetch published weights or the data package (download + sha256-verify + cache)
-python run.py fetch-weights waverep                            # [planned]
-python run.py fetch-data genvidbench                           # [planned]
+# 3. (Re)render the audited leaderboard
+python run.py leaderboard
 ```
+`clips.csv` is a manifest with columns `(video_id, generator, label, is_real, mp4_path)`. The
+auto-download detectors (D3, ReStraV, CLIP, RAFT) need no setup; TemporalSpec needs only the
+bundled PyAV/ffmpeg; WaveRep/FVMD/NSG-VD take a checkpoint (`--weights`, or fetched from the zoo).
+Training (`scripts/train/<model>.sh`) and `fetch-data` are scaffolded; see the roadmap.
 
 ## Add your own detector (plugin API)
 Subclass `Detector`, set a `DetectorSpec`, implement at least one evidence interface, and register it. The audit, metrics, and leaderboard row come for free:
@@ -122,18 +124,20 @@ class MyBench(VideoDataset):
 ```
 
 ## Model zoo and weights
-Published-weight baselines, wrapped behind the plugin API. Weights are fetched on demand (download + sha256-verify + cache), or you point at a local path.
+All eight baselines are wrapped behind the plugin API and run from clips via `run.py extract`. Five are clone-and-run (auto-download backbones or codec features); three take published checkpoints, fetched via the zoo (`fetch_weights` → download + sha256-verify + cache) or passed with `--weights`.
 
-| Detector | Family | Backbone | Weights | Download |
-|---|---|---|---|---|
-| TemporalSpec (ours) | codec | codec motion vectors (13-d) | ours | [⬇](#) _(coming)_ |
-| D3 | appearance | XCLIP-ViT-B/16 | training-free | n/a |
-| ReStraV | appearance | DINOv2 ViT-S/14 | public | [⬇](#) _(coming)_ |
-| WaveRep | forensic | DINOv2 ViT-B/14 + wavelet aug | public | [⬇](#) _(coming)_ |
-| NSG-VD | forensic | diffusion noise-score | public (ckpts) | [⬇](#) _(coming)_ |
-| FVMD | motion | PIPs++ point tracker | metric | n/a |
-| RAFT | motion | RAFT-Large optical flow | pretrained | [⬇](#) _(coming)_ |
-| CLIP | appearance | CLIP-ViT-B/32 | pretrained | [⬇](#) _(coming)_ |
+| Detector | Family | Backbone | Setup |
+|---|---|---|---|
+| TemporalSpec (ours) | codec | codec motion vectors (13-d) | none — PyAV codec MVs |
+| D3 | appearance | XCLIP-ViT-B/16 | auto-download (training-free) |
+| ReStraV | appearance | DINOv2 ViT-S/14 | auto-download (torch.hub) |
+| CLIP | appearance | CLIP-ViT-B/32 | auto-download |
+| RAFT | motion | RAFT-Large optical flow | auto-download (torchvision) |
+| FVMD | motion | PIPs++ point tracker | auto-fetch (public release) |
+| WaveRep | forensic | DINOv2 ViT-B/14 + wavelet aug | checkpoint (zoo / `--weights`) |
+| NSG-VD | forensic | ADM 256 diffusion + Swin discriminator | checkpoint + ~2GB ADM model |
+
+Vendored model code (PIPs++ for FVMD, the NSG-VD codebase) lives under `vidaudit/_vendor/`, kept separate from our thin wrappers and carrying its upstream license. Published checkpoints (WaveRep G4, NSG-VD per-generator + the ADM diffusion model) are currently on the project's permanent cluster storage with their sha256s recorded in `zoo/manifest.yaml`; a public mirror is planned.
 
 Excluded for now (no public weights): **DeMamba** (authors withhold the checkpoints, GitHub issues #5/#16/#21), DeCoF / ATSS / CMTA / VidGuard-R1 (no release). On a "wanted: weights" list.
 
@@ -154,13 +158,14 @@ For the paper we run **eval only** (published weights and native heads through t
 
 ## Roadmap
 - [x] Plugin API (eval / load-weights / train as three orthogonal capabilities)
-- [x] Unified conda environment
-- [x] First audited rows (D3-native, NSG-VD) and the baseline leaderboard above
-- [ ] Audit backend ported into `vidaudit/audit/` (P1-P6, metrics, verdict, leaderboard render) `[in progress]`
-- [ ] Verified detector wrappers for the full zoo `[in progress]`
-- [ ] `run.py` CLI (eval / train / leaderboard / fetch) `[in progress]`
-- [ ] Standardized data package + weight hosting + Croissant `[planned]`
+- [x] Unified conda environment (pinned + lockfile)
+- [x] Audit engine in `vidaudit/audit/` (matched-cell LOGO + RvR + the metric tuple + both verdicts), reproduces the paper numbers on real feature CSVs
+- [x] `run.py` CLI: `extract`, `eval --features`, `leaderboard`
+- [x] Detector wrappers for all 8 baselines (auto-download tier + checkpoint tier), each smoke-tested from clips
+- [x] Weight-fetch zoo (`fetch_weights` + `zoo/manifest.yaml`, sha256-verified)
+- [ ] Public weight mirror + standardized data package + Croissant `[planned]`
 - [ ] HuggingFace dataset + leaderboard Space `[planned]`
+- [ ] Training recipes per detector (trainer scaffolding is in place) `[planned]`
 - [ ] AIGVDBench combined cross-dataset cell (D3 re-run at XCLIP-B/16) `[planned]`
 
 See `FRAMEWORK.md` for the full design, the plugin contract, and the build phases.

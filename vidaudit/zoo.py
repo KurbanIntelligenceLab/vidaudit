@@ -44,11 +44,12 @@ def fetch_weights(name: str, *, manifest: dict | None = None, force: bool = Fals
     dest = CACHE / name.lower() / fn
     if dest.exists() and not force:
         return dest
-    if not url or url.startswith(_PLACEHOLDER):
+    if not url or not url.lower().startswith(("http://", "https://")):
         raise RuntimeError(
-            f"{name}: no download URL in zoo/manifest.yaml yet (upload the checkpoint to "
-            f"funded storage and set its URL). For now, pass a local path: "
-            f"load_weights('/path/to/{fn}') or `run.py extract {name.lower()} --weights ...`."
+            f"{name}: no public download URL in zoo/manifest.yaml (the checkpoint is on "
+            f"cluster permanent storage; see the entry's `url` note). rsync it locally and "
+            f"pass the path: load_weights('/path/to/{fn}') or "
+            f"`run.py extract {name.lower()} --weights /path/to/{fn}`."
         )
     dest.parent.mkdir(parents=True, exist_ok=True)
     print(f"[zoo] fetching {name} weights -> {dest}", flush=True)

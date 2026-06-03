@@ -154,6 +154,10 @@ Excluded for now (no public weights): **DeMamba** (authors withhold, GitHub issu
 5. **Release** : leaderboard render + HF Space + README + "add your model in ~30 lines" and "add a dataset in ~20 lines" tutorials.
 
 ## Status
-- [x] Plugin API drafted, then revised so **training is first-class** (eval / load-weights / train as three orthogonal capabilities)
-- [~] Phase 2 eval wrappers: D3-native audited (GenVidBench OOD 0.887; AIGVDBench run used XCLIP-B/32 and must be re-run at the paper's B/16) and NSG-VD audited (LOGO OOD 0.660 at RvR 0.596, margin +0.064: rides dataset identity). Assembling the baseline leaderboard rows.
-- [ ] Phases 1 (remaining core), 3, 4, 5
+- [x] Plugin API (eval / load-weights / train as three orthogonal capabilities); training first-class
+- [x] Unified conda env (Python 3.14, pinned ranges + lockfile)
+- [x] Audit engine (`vidaudit/audit/`): matched-cell LOGO + RvR floor + metric tuple + both verdicts; reproduces the paper numbers on real feature CSVs (ReStraV/TemporalSpec exact, FVMD operating-point exact)
+- [x] `run.py` CLI: `extract` (clips → features), `eval --features` (audit), `leaderboard`
+- [x] All 8 detector wrappers from clips: D3, ReStraV, CLIP, RAFT, TemporalSpec (clone-and-run, verified) + WaveRep, FVMD (checkpoints, verified) + NSG-VD (ADM diffusion + Swin; verifying). Vendored model code in `vidaudit/_vendor/` (PIPs++, NSG-VD), separate from the thin wrappers
+- [x] Weight-fetch zoo (`zoo.py` + `zoo/manifest.yaml`, sha256-verified); checkpoints on cluster permanent storage (public mirror TBD)
+- [ ] Standardized data package + Croissant; HF dataset + Space; per-detector training recipes (trainer scaffolded); AIGVDBench combined cell (D3 re-run at XCLIP-B/16)
