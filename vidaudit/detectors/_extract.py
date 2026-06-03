@@ -64,6 +64,26 @@ def decode_clip(path, n_frames: int = 8, size: int = 224, window_sec=None) -> np
     return out
 
 
+def decode_pil(path, n_frames: int = 12):
+    """Decode n_frames uniformly as native-resolution PIL RGB images.
+
+    For HuggingFace image processors (e.g. CLIP) that do their own aspect-preserving
+    resize + centre-crop, so we must not pre-distort to a square here.
+    """
+    import av
+    from PIL import Image
+    with av.open(str(path)) as container:
+        frames = [f.to_ndarray(format="rgb24") for f in container.decode(video=0)]
+    if not frames:
+        raise RuntimeError(f"empty decode: {path}")
+    T = len(frames)
+    if T >= n_frames:
+        idx = np.linspace(0, T - 1, n_frames).round().astype(int).tolist()
+    else:
+        idx = list(range(T)) + [T - 1] * (n_frames - T)
+    return [Image.fromarray(frames[int(j)]) for j in idx]
+
+
 def clips_from_manifest(csv_path) -> List[Clip]:
     """Build Clip objects from a manifest CSV (video_id, generator, label, is_real, mp4_path)."""
     df = pd.read_csv(csv_path)
@@ -99,9 +119,12 @@ def extract_table(detector: Detector, clips: Iterable[Clip], *, kind: str = "aut
     done: set = set()
     rows: List[dict] = []
     if out and Path(out).exists():
-        prev = pd.read_csv(out)
-        done = set(prev["video_id"].astype(str))
-        rows = prev.to_dict("records")
+        try:
+            prev = pd.read_csv(out)
+            done = set(prev["video_id"].astype(str))
+            rows = prev.to_dict("records")
+        except Exception:
+            done, rows = set(), []  # empty/corrupt prior file: start fresh
 
     n_fail = 0
     for clip in clips:
