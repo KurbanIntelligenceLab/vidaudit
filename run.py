@@ -37,6 +37,13 @@ def main(argv=None) -> int:
     ev.add_argument("--inner-cv", action="store_true", help="5-fold inner CV over C (LR only)")
     ev.add_argument("--arrow", action="store_true", help="read the CSV with the pandas pyarrow backend (faster on wide tables)")
 
+    ex = sub.add_parser("extract", help="extract a detector's features/score from clips into a CSV")
+    ex.add_argument("model", help="registered detector name (e.g. d3)")
+    ex.add_argument("--manifest", required=True,
+                    help="clips CSV with (video_id, generator, label, is_real, mp4_path)")
+    ex.add_argument("--out", required=True, help="output feature CSV (feeds `eval --features`)")
+    ex.add_argument("--kind", default="auto", choices=["auto", "features", "score"])
+
     tr = sub.add_parser("train", help="train a detector that ships a recipe [in progress]")
     tr.add_argument("model")
 
@@ -49,6 +56,14 @@ def main(argv=None) -> int:
     if args.cmd == "leaderboard":
         from vidaudit.audit.leaderboard import build
         print(f"rendered {build(args.csv, args.out)}")
+        return 0
+
+    if args.cmd == "extract":
+        from vidaudit.detectors._extract import clips_from_manifest, extract_table
+        from vidaudit.detectors.registry import get
+        det = get(args.model)
+        df = extract_table(det, clips_from_manifest(args.manifest), kind=args.kind, out=args.out)
+        print(f"extracted {len(df)} rows -> {args.out}")
         return 0
 
     if args.cmd == "eval":
