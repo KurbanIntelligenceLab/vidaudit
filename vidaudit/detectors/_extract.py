@@ -19,23 +19,39 @@ import pandas as pd
 from vidaudit.detectors.base import Clip, Detector
 
 
-def decode_clip(path, n_frames: int = 8, size: int = 224) -> np.ndarray:
-    """Decode an mp4 to a uniform [n_frames, size, size, 3] uint8 RGB array.
+def decode_clip(path, n_frames: int = 8, size: int = 224, window_sec=None) -> np.ndarray:
+    """Decode an mp4 to a [n_frames, size, size, 3] uint8 RGB array.
 
-    Uses PyAV (the env's decoder). Short clips repeat the last frame; long clips
-    sample at uniform stride. (The cluster scripts used decord; PyAV is the unified
-    choice here, so re-extracted features can drift negligibly from the original
-    CSVs because the decode/resize path differs.)
+    Uses PyAV (the env's decoder). With `window_sec` set, samples uniformly across a
+    `window_sec`-second window centred on the clip midpoint (ReStraV protocol);
+    otherwise samples uniformly across the whole clip. Short clips repeat the last
+    frame. (The cluster scripts used decord; PyAV is the unified choice here, so
+    re-extracted features can drift negligibly from the original CSVs because the
+    decode/resize path differs.)
     """
     import av
     import cv2
 
     with av.open(str(path)) as container:
+        stream = container.streams.video[0]
+        fps = float(stream.average_rate) if stream.average_rate else 24.0
         frames = [f.to_ndarray(format="rgb24") for f in container.decode(video=0)]
     if not frames:
         raise RuntimeError(f"empty decode: {path}")
     T = len(frames)
-    if T <= n_frames:
+    if window_sec is not None and T > n_frames and fps > 0:
+        dur = T / fps
+        center = dur / 2.0
+        half = min(window_sec / 2.0, center, dur - center)
+        if half <= 0:
+            idx = np.linspace(0, T - 1, n_frames).round().astype(int)
+        else:
+            sf = max(0, int(round((center - half) * fps)))
+            ef = min(T - 1, int(round((center + half) * fps)))
+            idx = (np.full(n_frames, sf, int) if ef <= sf
+                   else np.linspace(sf, ef, n_frames).round().astype(int))
+        idx = np.clip(idx, 0, T - 1).tolist()
+    elif T <= n_frames:
         idx = list(range(T)) + [T - 1] * (n_frames - T)
     else:
         idx = np.linspace(0, T - 1, n_frames).round().astype(int).tolist()

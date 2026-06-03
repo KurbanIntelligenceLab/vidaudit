@@ -11,7 +11,7 @@ from .registry import all_detectors, get, register  # noqa: F401
 # Verified wrappers (enable as each one passes its reproduction check):
 # from . import temporalspec  # noqa: F401
 from . import d3              # noqa: F401,E402
-# from . import restrav       # noqa: F401
+from . import restrav         # noqa: F401,E402
 # from . import waverep       # noqa: F401
 # from . import nsgvd         # noqa: F401
 # from . import fvmd          # noqa: F401
