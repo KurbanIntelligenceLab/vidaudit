@@ -56,3 +56,7 @@ dependencies:
       - spectrum~=0.10.0          # Burg AR PSD for the motion spectral features (RAFT / TemporalSpec)
       - loguru~=0.7.3             # used by the vendored FVMD package
       - prettytable~=3.17.0       # used by the vendored FVMD package
+      - einops~=0.8.2             # vendored NSG-VD (Swin discriminator)
+      - seaborn~=0.13.2           # vendored NSG-VD (deep_MMD)
+      - torchsde~=0.2.6           # vendored NSG-VD (diffpure SDE score fn)
+      - torchdiffeq~=0.2.5        # vendored NSG-VD (diffpure ODE)
