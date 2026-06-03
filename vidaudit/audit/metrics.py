@@ -35,16 +35,16 @@ def pauc(y, s, max_fpr: float = 0.10) -> float:
 def tpr_at_fpr(y, s, fpr: float = 0.001) -> float:
     """True-positive rate at a target false-positive rate (deployable recall).
 
-    The threshold is the (1 - fpr) quantile of the real (negative) scores, i.e. the
-    operating point that admits `fpr` false positives among reals.
+    Highest TPR achievable while keeping FPR <= `fpr`, read off the ROC curve
+    (matches the audited-metrics harness).
     """
-    y = np.asarray(y).astype(bool)
-    s = np.asarray(s, float)
-    pos, neg = s[y], s[~y]
-    if pos.size == 0 or neg.size == 0:
+    from sklearn.metrics import roc_curve
+    y = np.asarray(y)
+    if np.unique(y).size < 2:
         return float("nan")
-    thr = np.quantile(neg, 1.0 - fpr)
-    return float((pos > thr).mean())
+    f, t, _ = roc_curve(y, np.asarray(s, float))
+    ok = f <= fpr
+    return float(t[ok].max()) if ok.any() else 0.0
 
 
 def brier(y, p) -> float:
@@ -53,16 +53,15 @@ def brier(y, p) -> float:
     return float(np.mean((np.asarray(p, float) - y) ** 2))
 
 
-def ece(y, p, n_bins: int = 15) -> float:
-    """Expected calibration error over equal-width confidence bins."""
+def ece(y, p, n_bins: int = 10) -> float:
+    """Expected calibration error over equal-width probability bins (10-bin)."""
     y = np.asarray(y, float)
     p = np.asarray(p, float)
     edges = np.linspace(0.0, 1.0, n_bins + 1)
-    idx = np.clip(np.digitize(p, edges[1:-1]), 0, n_bins - 1)
     n = max(len(p), 1)
     e = 0.0
-    for b in range(n_bins):
-        m = idx == b
+    for i in range(n_bins):
+        m = (p >= edges[i]) & (p <= edges[i + 1]) if i == 0 else (p > edges[i]) & (p <= edges[i + 1])
         if not m.any():
             continue
         e += (m.sum() / n) * abs(y[m].mean() - p[m].mean())
