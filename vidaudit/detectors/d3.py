@@ -67,5 +67,12 @@ class D3(Detector):
         return f[2:] - 2.0 * f[1:-1] + f[:-2]
 
     def features(self, clip: Clip) -> np.ndarray:
-        """Mean over time of the second-order difference (768-d)."""
+        """Mean over time of the second-order difference (768-d), for the L2-LR readout."""
         return self._delta2(clip).mean(axis=0)
+
+    def score(self, clip: Clip) -> float:
+        """D3's published native head: std over time of the second-order difference,
+        meaned over dims. The paper's convention is higher = more real; we return it
+        negated so higher = more generated (the plugin/audit convention)."""
+        d2 = self._delta2(clip)
+        return -float(d2.std(axis=0, ddof=1).mean())
