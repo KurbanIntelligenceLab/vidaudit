@@ -136,8 +136,11 @@ def extract_table(detector: Detector, clips: Iterable[Clip], *, kind: str = "aut
                    "mp4_path": clip.path}
             if use_feats:
                 v = np.asarray(detector.features(clip), dtype=float).ravel()
-                for j, val in enumerate(v):
-                    rec[f"{prefix}_{j}"] = float(val)
+                names = getattr(detector, "feature_names", None)
+                cols = (list(names) if names and len(names) == len(v)
+                        else [f"{prefix}_{j}" for j in range(len(v))])
+                for c, val in zip(cols, v):
+                    rec[c] = float(val)
             else:
                 rec["score"] = float(detector.score(clip))
             rows.append(rec)

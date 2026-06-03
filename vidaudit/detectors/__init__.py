@@ -15,5 +15,5 @@ from . import restrav         # noqa: F401,E402
 # from . import waverep       # noqa: F401
 # from . import nsgvd         # noqa: F401
 # from . import fvmd          # noqa: F401
-# from . import raft          # noqa: F401
+from . import raft            # noqa: F401,E402
 from . import clip            # noqa: F401,E402

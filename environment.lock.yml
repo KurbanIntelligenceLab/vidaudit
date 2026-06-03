@@ -240,9 +240,11 @@ dependencies:
       - anyio==4.13.0
       - attrs==26.1.0
       - click==8.4.1
+      - colorlog==6.10.1
       - datasets==4.8.5
       - decorator==5.3.1
       - dill==0.4.1
+      - easydev==0.14.0
       - etils==1.14.0
       - frozenlist==1.8.0
       - fsspec==2026.2.0
@@ -253,18 +255,23 @@ dependencies:
       - httpx==0.28.1
       - huggingface-hub==1.17.0
       - jsonpath-rw==1.4.0
+      - line-profiler==5.0.2
       - mlcroissant==1.1.0
       - multidict==6.7.1
       - multiprocess==0.70.19
       - open-clip-torch==3.3.0
       - pandas-stubs==3.0.3.260530
+      - pexpect==4.9.0
+      - platformdirs==4.10.0
       - ply==3.11
       - propcache==0.5.2
+      - ptyprocess==0.7.0
       - pyarrow==24.0.0
       - rdflib==7.6.0
       - regex==2026.5.9
       - safetensors==0.7.0
       - shellingham==1.5.4
+      - spectrum==0.10.0
       - timm==1.0.27
       - tokenizers==0.22.2
       - transformers==5.10.1
