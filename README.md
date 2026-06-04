@@ -61,32 +61,63 @@ Every detector is scored on the **matched 27k-clip GenVidBench cell** under leav
 - **Standardized data package**: per-clip features, LOGO splits, provenance, and Croissant metadata, combining GenVidBench and AIGVDBench (bring-your-own-videos; we do not redistribute source clips).
 - **Unified CLI**: `run.py extract` (clips → features) → `run.py eval` (audit → verdicts) → `run.py leaderboard`, plus a uniform, overridable trainer driven by shell scripts.
 
-## Installation
-```bash
-git clone <repo-url> vidaudit && cd vidaudit
-conda env create -f environment.yml     # one unified env for the whole repo
-conda activate vidaudit
-pip install -e .                         # register vidaudit (editable); runtime deps come from conda
-```
-One environment covers everything (audit, figures, video/codec tooling, deep backbones, training). Apple Silicon (MPS) and Linux/CUDA are both supported; heavy GPU runs are meant for a cluster, the same spec works locally for development. Dependencies are pinned to ranges in `environment.yml`; for a byte-exact environment, use `conda env create -f environment.lock.yml` instead.
+## Setup
 
-## Usage
+**Prerequisites:** [Conda](https://docs.conda.io/) (Miniforge or Miniconda) and `git`. A GPU is optional — Apple Silicon (MPS) and CPU both work for development; heavy extraction and training are meant for a CUDA cluster, where the same `environment.yml` resolves a GPU build of torch.
+
 ```bash
-# 1. Extract a detector's per-clip features from your clips -> a CSV
+# 1. Clone the repository
+git clone <repo-url> vidaudit && cd vidaudit
+
+# 2. Create the one unified environment (Python 3.14: audit + video/codec tooling +
+#    deep backbones + training, in a single env)
+conda env create -f environment.yml
+#    For a byte-exact environment instead of pinned ranges:
+#    conda env create -f environment.lock.yml
+
+# 3. Activate it
+conda activate vidaudit
+
+# 4. Register the package (editable install; runtime deps come from conda, not pip)
+pip install -e .
+
+# 5. Verify
+python -m pytest -q       # the test suite should pass
+python run.py --help      # the CLI entry point
+```
+
+That single environment covers everything. On a CUDA cluster, create the env on a node with internet so conda resolves the GPU torch build — see `scripts/cluster_build_env.sh` for a turnkey script.
+
+## Tutorial
+
+The workflow is **extract → audit → (train) → leaderboard**, one command per step. The input is a `clips.csv` manifest with columns `(video_id, generator, label, is_real, mp4_path)`: one row per clip, `is_real=1` for real sources and `0` for generated, and `generator` naming the model (or the real source).
+
+**Step 1 — Extract a detector's per-clip features.** The auto-download detectors (D3, ReStraV, CLIP, RAFT) and TemporalSpec (codec motion vectors) need no setup; WaveRep / FVMD / NSG-VD take a checkpoint via `--weights`.
+```bash
 python run.py extract restrav --manifest clips.csv --out restrav.csv
 python run.py extract waverep --manifest clips.csv --out waverep.csv \
-       --weights /path/to/weights_dinov2_G4.ckpt        # weighted detectors take a checkpoint
-
-# 2. Audit the feature table -> the full metric tuple + both verdicts (one leaderboard record)
-python run.py eval --features restrav.csv --subset baseline_clip_subset.csv
-
-# 3. (Re)render the audited leaderboard
-python run.py leaderboard
+       --weights /path/to/weights_dinov2_G4.ckpt
 ```
-`clips.csv` is a manifest with columns `(video_id, generator, label, is_real, mp4_path)`. The
-auto-download detectors (D3, ReStraV, CLIP, RAFT) need no setup; TemporalSpec needs only the
-bundled PyAV/ffmpeg; WaveRep/FVMD/NSG-VD take a checkpoint (`--weights`, or fetched from the zoo).
-`run.py train <model> --features <table>` learns a head over the extracted table (see [Training](#training)); `fetch-data` is planned (see the roadmap).
+
+**Step 2 — Audit the feature table.** Runs the six-control protocol and prints one leaderboard record. `--subset` restricts to a matched cell.
+```bash
+python run.py eval --features restrav.csv --subset baseline_clip_subset.csv
+```
+The record reports `logo_ood` (cross-generator AUC), `rvr` (the real-vs-real floor), `margin` (above-floor headroom), and `tpr01` / `pauc10` / `brier` / `ece` — plus a **floor verdict** (certified / caught / marginal / leakage) and a **deploy tier** (usable / marginal / collapses).
+
+**Step 3 — Audit a native head's own scores** (no readout retraining), e.g. D3's published decision:
+```bash
+python run.py extract d3 --manifest clips.csv --out d3_scores.csv --kind score
+python run.py eval --scores d3_scores.csv
+```
+To train instead of using a published head, the standard trainer fits a head over any feature table — `scripts/train/restrav.sh clips.csv` or `python run.py train mlp-probe --features restrav.csv` (see [Training](#training)).
+
+**Step 4 — Render the leaderboard** from `leaderboard.csv`:
+```bash
+python run.py leaderboard      # writes LEADERBOARD.md
+```
+
+Heavy extraction or training belongs on a cluster — wrap any step in an sbatch (templates in `scripts/`). `fetch-weights <name>` downloads and sha256-verifies a checkpoint from the zoo; `fetch-data` reconstructs a dataset locally (P1 re-encode + P2 length filter).
 
 ## Add your own detector (plugin API)
 Subclass `Detector`, set a `DetectorSpec`, implement at least one evidence interface, and register it. The audit, metrics, and leaderboard row come for free:
@@ -137,7 +168,15 @@ All eight baselines are wrapped behind the plugin API and run from clips via `ru
 | WaveRep | forensic | DINOv2 ViT-B/14 + wavelet aug | checkpoint (zoo / `--weights`) |
 | NSG-VD | forensic | ADM 256 diffusion + Swin discriminator | checkpoint + ~2GB ADM model |
 
-Vendored model code (PIPs++ for FVMD, the NSG-VD codebase) lives under `vidaudit/_vendor/`, kept separate from our thin wrappers and carrying its upstream license. Published checkpoints (WaveRep G4, NSG-VD per-generator + the ADM diffusion model) are currently on the project's permanent cluster storage with their sha256s recorded in `zoo/manifest.yaml`; a public mirror is planned.
+Vendored model code (PIPs++ for FVMD, the NSG-VD codebase) lives under `vidaudit/_vendor/`, kept separate from our thin wrappers and carrying its upstream license.
+
+**Weight downloads.** FVMD's point tracker auto-fetches from its public release. The WaveRep, NSG-VD, and ADM checkpoints have their sha256s recorded in `zoo/manifest.yaml`; a public mirror is on the way — until then, obtain the checkpoint and pass it with `--weights`.
+
+| Checkpoint | Size | Download |
+|---|---|---|
+| WaveRep `weights_dinov2_G4.ckpt` | 331 MB | _placeholder — public mirror coming_ |
+| NSG-VD `standard-Pika-mp.pth` | 2 MB | _placeholder — public mirror coming_ |
+| ADM `256x256_diffusion_uncond.pt` | 2.1 GB | _placeholder — public mirror coming_ |
 
 Excluded for now (no public weights): **DeMamba** (authors withhold the checkpoints, GitHub issues #5/#16/#21), DeCoF / ATSS / CMTA / VidGuard-R1 (no release). On a "wanted: weights" list.
 
