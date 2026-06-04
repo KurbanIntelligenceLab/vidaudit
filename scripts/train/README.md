@@ -37,18 +37,18 @@ trainer's internal val AUC only selects the checkpoint.
 
 ## Run heavy training on the cluster, never locally
 
-Wrap the recipe in an sbatch (see `reference-cluster` for the template):
+Wrap the recipe in an sbatch (edit the account, email, and paths for your cluster):
 
 ```bash
 mkdir -p logs && sbatch <<'EOF'
 #!/bin/bash
 #SBATCH --job-name=vidaudit_train --partition=gpu --gpus=1
 #SBATCH --nodes=1 --ntasks=1 --cpus-per-task=8 --mem=48G --time=08:00:00
-#SBATCH -A r00432 --output=logs/%x_%j.out --error=logs/%x_%j.err
-#SBATCH --mail-type=END,FAIL --mail-user=meocakir@iu.edu
+#SBATCH -A your_slurm_account --output=logs/%x_%j.out --error=logs/%x_%j.err
+#SBATCH --mail-type=END,FAIL --mail-user=you@example.edu
 export PS1="${PS1:-}"
-module load conda && conda activate vidaudit
-cd /N/project/de_briujn_graph/Projects/vidaudit
+module load conda && conda activate /path/to/vidaudit/.conda/envs/vidaudit
+cd /path/to/vidaudit
 OUT=runs/probe scripts/train/mlp-probe.sh features/train.csv --set epochs=200
 EOF
 ```

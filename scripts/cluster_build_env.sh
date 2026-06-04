@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
-# Build VidAudit's own conda env on BigRed, ON THE LOGIN NODE (it has internet;
-# compute nodes do not), onto PROJECT storage (HOME quota is tiny and fills up --
-# the package cache + the ~8 GB CUDA env must not live under /N/u).
+# Build VidAudit's own conda env on an HPC cluster, ON A LOGIN NODE (it has internet;
+# compute nodes often do not), onto PROJECT/scratch storage (a small HOME quota fills
+# up -- the package cache + the ~8 GB CUDA env must not live under HOME).
+#
+# Point VIDAUDIT_REPO at your checkout on the cluster:
+#   ssh <cluster> 'VIDAUDIT_REPO=/path/to/vidaudit bash $VIDAUDIT_REPO/scripts/cluster_build_env.sh'
 #
 # Two subtleties this handles:
 #  1) The login node has no GPU, so the __cuda virtual package is absent and conda
@@ -13,13 +16,11 @@
 # default override is 12.9 (runs on any CUDA-12.x driver via minor-version compat;
 # the GPU job then asserts torch.cuda.is_available() on a real GPU). Override with
 # CUDA_OVERRIDE=12.x / CUDA_BUILD=cudaNNN if conda-forge's build matrix changes.
-#
-#   ssh bigred 'bash /N/project/de_briujn_graph/Projects/vidaudit/scripts/cluster_build_env.sh'
 set -euo pipefail
 export PS1="${PS1:-}"
 module load conda
 
-REPO=/N/project/de_briujn_graph/Projects/vidaudit
+REPO="${VIDAUDIT_REPO:?set VIDAUDIT_REPO to your vidaudit checkout on the cluster}"
 PREFIX="$REPO/.conda/envs/vidaudit"
 export CONDA_PKGS_DIRS="$REPO/.conda/pkgs"     # package + repodata cache off HOME
 export CONDA_OVERRIDE_CUDA="${CUDA_OVERRIDE:-12.9}"
@@ -44,4 +45,4 @@ print("torch", torch.__version__, "| torch.version.cuda", torch.version.cuda)
 assert torch.version.cuda is not None, "CPU build resolved -- check CUDA_OVERRIDE / CUDA_BUILD"
 print("OK: CUDA-compiled torch. cuda.is_available() will be True on a GPU node.")
 PY
-echo "=== DONE: GPU smoke -> sbatch scripts/cluster_verify_nsgvd.sbatch ==="
+echo "=== DONE: env ready -> reproduce results with scripts/reproduce_leaderboard.sh ==="

@@ -124,7 +124,9 @@ To train instead of using a published head, the standard trainer fits a head ove
 python run.py leaderboard      # writes LEADERBOARD.md
 ```
 
-Heavy extraction or training belongs on a cluster — wrap any step in an sbatch (templates in `scripts/`). `fetch-weights <name>` downloads and sha256-verifies a checkpoint from the zoo; `prepare-data <dataset> --source <dir>` preprocesses a downloaded dataset (P1 re-encode + P2 length filter) into the audit format.
+To reproduce the whole leaderboard in one pass — extract → eval → render for every wrapped detector — run `scripts/reproduce_leaderboard.sh <prepared_manifest.csv>` (the manifest from `prepare-data`; checkpoints for the weighted detectors via `WAVEREP_CKPT`/`NSGVD_CKPT`/`ADM_CKPT`).
+
+Heavy extraction or training belongs on a cluster — wrap any step in an sbatch (the env is built with `scripts/cluster_build_env.sh`). `fetch-weights <name>` downloads and sha256-verifies a checkpoint from the zoo; `prepare-data <dataset> --source <dir>` preprocesses a downloaded dataset (P1 re-encode + P2 length filter) into the audit format.
 
 ## Add your own detector (plugin API)
 Subclass `Detector`, set a `DetectorSpec`, implement at least one evidence interface, and register it. The audit, metrics, and leaderboard row come for free:
