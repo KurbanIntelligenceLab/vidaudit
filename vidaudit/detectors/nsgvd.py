@@ -101,6 +101,12 @@ class NSGVD(Detector):
         ck_dir = _VENDOR.parent / "Checkpoints"
         ck_dir.mkdir(exist_ok=True)
         ck_target = ck_dir / "256x256_diffusion_uncond.pt"
+        # idempotent + self-repairing: a prior/dangling/wrong-host symlink (e.g. one
+        # rsynced from another machine, whose target path does not exist here) reads as
+        # not-exists yet makes os.symlink raise FileExistsError. Drop any existing link
+        # and (re)point it at the resolved ADM checkpoint.
+        if ck_target.is_symlink():
+            ck_target.unlink()
         if not ck_target.exists():
             os.symlink(adm, ck_target)
         cwd = os.getcwd()

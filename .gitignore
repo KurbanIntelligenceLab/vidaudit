@@ -20,8 +20,10 @@ results/scratch/
 
 # Large data + weights (hosted via HuggingFace / LFS, not git)
 *.pth
+*.pt
 *.ckpt
 *.safetensors
+vidaudit/_vendor/Checkpoints/   # NSG-VD runtime symlink to the ADM checkpoint
 *.npy
 *.npz
 *.pkl
