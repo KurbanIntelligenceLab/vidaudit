@@ -64,7 +64,7 @@ The primary cell is the **matched 27k-clip GenVidBench cell** under leave-one-ge
 ## What's inside
 - **Six-control audit protocol (P1-P6)**: canonical re-encode, clip-length leakage filter, real-vs-real dataset-identity floor, matched-harness re-training, multi-seed/bootstrap CIs, and a true cross-dataset cell.
 - **Audited leaderboard**: every detector labeled by the two verdicts above, with the full metric tuple (AUC, above-floor margin, TPR@FPR, calibration), not just AUC.
-- **Model zoo**: 8 detectors behind one plugin API; backbones auto-download or load published checkpoints (sha256-verified via the zoo).
+- **Model zoo**: 8 detectors behind one plugin API — **TemporalSpec** (ours), **D3**, **ReStraV**, **CLIP**, **RAFT**, **FVMD**, **WaveRep**, **NSG-VD**; backbones auto-download or load published checkpoints (sha256-verified via the zoo). Full table + setup below.
 - **Standardized data package**: per-clip features, LOGO splits, provenance, and Croissant metadata, combining GenVidBench and AIGVDBench (bring-your-own-videos; we do not redistribute source clips).
 - **Unified CLI**: `run.py extract` (clips → features) → `run.py eval` (audit → verdicts) → `run.py leaderboard`, plus a uniform, overridable trainer driven by shell scripts.
 
