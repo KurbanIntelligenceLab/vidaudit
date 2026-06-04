@@ -75,6 +75,16 @@ def test_byo_instructions_mentions_redistribution():
     assert "redistributable" in byo_instructions("GenVidBench")
 
 
+def test_download_file_cache_hit_skips_network(tmp_path):
+    """A cached file whose sha256 matches is returned without touching the network
+    (the url here is bogus; if it were fetched the test would error)."""
+    import hashlib
+    dst = tmp_path / "cached.bin"
+    dst.write_bytes(b"vidaudit")
+    sha = hashlib.sha256(b"vidaudit").hexdigest()
+    assert download_file("https://example.invalid/never", str(dst), sha256=sha) == str(dst)
+
+
 # ---- end-to-end reconstruct (needs ffmpeg) ---------------------------------
 @pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg required")
 def test_reconstruct_canonicalizes_and_filters(tmp_path):

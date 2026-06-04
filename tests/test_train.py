@@ -95,3 +95,36 @@ def test_train_smoke_end_to_end(tmp_path):
     # generated rows should score higher (more generated) than real rows
     y = (1 - df["is_real"]).to_numpy()
     assert scores[y == 1].mean() > scores[y == 0].mean()
+
+
+def test_train_alternative_components(tmp_path):
+    """Exercise the non-default registry entries end-to-end: linear head + focal loss
+    + SGD + step scheduler (the smoke covers mlp/bce/adamw/cosine)."""
+    from vidaudit.detectors.registry import get
+    csv = str(tmp_path / "feats.csv")
+    _synth_features(csv)
+    det = get("mlp-probe")
+    cfg = det.default_train_config()
+    cfg.features = csv
+    cfg.head, cfg.loss, cfg.optimizer, cfg.scheduler = "linear", "focal", "sgd", "step"
+    cfg.lr, cfg.epochs, cfg.batch_size = 0.05, 40, 64
+    out_dir = str(tmp_path / "run")
+    det.train(cfg, [], out_dir)
+    m = json.load(open(os.path.join(out_dir, "metrics.json")))
+    assert len(m["history"]) == 40 and m["best_val_auc"] > 0.65
+
+
+def test_train_with_separate_val_features(tmp_path):
+    """cfg.val_features uses a held-out table instead of splitting the train table."""
+    from vidaudit.detectors.registry import get
+    tr, va = str(tmp_path / "tr.csv"), str(tmp_path / "va.csv")
+    _synth_features(tr)
+    _synth_features(va, n_per=30)
+    det = get("mlp-probe")
+    cfg = det.default_train_config()
+    cfg.features, cfg.val_features = tr, va
+    cfg.epochs, cfg.batch_size = 15, 64
+    out_dir = str(tmp_path / "run")
+    det.train(cfg, [], out_dir)
+    m = json.load(open(os.path.join(out_dir, "metrics.json")))
+    assert len(m["history"]) == 15 and m["best_val_auc"] > 0.6
