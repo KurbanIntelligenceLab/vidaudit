@@ -7,9 +7,9 @@ SingleSwinBlockDiscriminator -> a 300-d per-clip feature. `features(clip)` retur
 300-d vector. (The leaderboard's 0.660 comes from an MMD distance to a real reference bank,
 a relative quantity that does not fit per-clip features(); use `mmd_scores` for that.)
 
-Heavy + contained: needs the ~2GB ADM diffusion model + a per-generator Swin checkpoint, and
-the NSG-VD codebase is vendored under vidaudit/_vendor/nsgvd. The vendored path is inserted
-lazily, so the other detectors are unaffected. Ported from run_nsgvd_features.py.
+Needs the ADM diffusion model + a per-generator Swin checkpoint (see zoo/manifest.yaml); the
+NSG-VD codebase is vendored under vidaudit/_vendor/nsgvd and imported lazily. Ported from
+run_nsgvd_features.py.
 """
 from __future__ import annotations
 
@@ -36,8 +36,8 @@ class NSGVD(Detector):
         published_weights=True, trainable=False, needs_gpu=True,
         weights_url="see zoo/manifest.yaml (nsgvd + nsgvd-adm); obtain from the original release",
         paper="Zhang et al., NeurIPS 2025 (arXiv:2510.08073)",
-        notes="diffusion-noise NSG feature -> Swin 300-d. Heavy: ~2GB ADM model + per-gen Swin "
-              "ckpt; vendored codebase in vidaudit/_vendor/nsgvd (contained, lazy).",
+        notes="diffusion-noise NSG feature -> Swin 300-d; needs the ADM model + per-gen Swin "
+              "ckpt; vendored codebase in vidaudit/_vendor/nsgvd (lazy).",
     )
     feature_names = [f"nsgvd_{j}" for j in range(_FEAT_DIM)]
 

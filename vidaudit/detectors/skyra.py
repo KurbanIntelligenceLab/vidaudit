@@ -1,17 +1,9 @@
-"""Skyra (JoeLeelyf et al., CVPR 2026; arXiv:2512.15693): a Qwen2.5-VL-7B MLLM that
-reasons over sampled frames and emits a `<answer>Fake/Real</answer>` verdict. Weights
-JoeLeelyf/Skyra-RL on HuggingFace, CC-BY-4.0, ungated.
+"""Skyra: a Qwen2.5-VL-7B MLLM for AI-generated video detection (JoeLeelyf et al., CVPR 2026;
+arXiv:2512.15693). Weights: JoeLeelyf/Skyra-RL on HuggingFace (CC-BY-4.0).
 
-Wrapped via the reusable `MLLMDetector` adapter: `score()` returns the soft p(generated)
-from the verdict-token logits; `features()` is the pooled VLM hidden state. Heavy
-(~16 GB, GPU); a real-weights run belongs on the cluster.
-
-The system + user prompts below are verbatim from the repo's eval harness
-(`eval/inference_end2end/model_engine.py`), which asks for a `<think>...</think>` analysis
-(with `<type>...</type>` artifact tags) and a final one-word `<answer>Fake/Real</answer>` over
-16 uniformly sampled frames (short side 256). The generic adapter passes the frames as a
-block rather than interleaving the per-frame `[T=..s] <image>` timestamp lines; the verdict
-format the soft score reads is identical.
+The SYSTEM_PROMPT and user prompt below are verbatim from the repo
+(eval/inference_end2end/model_engine.py): a <think> analysis then a one-word
+<answer>Fake/Real</answer> verdict over 16 uniformly sampled frames.
 """
 from __future__ import annotations
 
@@ -84,9 +76,8 @@ class Skyra(MLLMDetector):
         weights_url="https://huggingface.co/JoeLeelyf/Skyra-RL",
         license="CC-BY-4.0",
         paper="JoeLeelyf et al., CVPR 2026 (arXiv:2512.15693)",
-        notes="Qwen2.5-VL-7B emitting a <answer>Fake/Real</answer> verdict; score() = soft "
-              "p(generated) from the verdict-token logits, features() = pooled hidden state. "
-              "Verbatim eval prompt; 16 uniform frames. Heavy (~16GB, GPU) -> run on the cluster.",
+        notes="Qwen2.5-VL-7B; verbatim eval prompt; <answer>Fake/Real</answer> verdict over "
+              "16 uniformly sampled frames.",
     )
     model_id = "JoeLeelyf/Skyra-RL"
     system_prompt = _SYS

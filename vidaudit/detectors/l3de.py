@@ -1,32 +1,14 @@
-"""L3DE (Chang et al., ICCV 2025; arXiv:2406.19568): a 3D-cue real-vs-synthetic video
-detector. Three frozen monocular cues are fused by a small 3D-CNN ("Net"):
+"""L3DE: an AI-generated video detector fusing DINOv2-ViT-G appearance, RAFT optical flow, and
+UniDepth-v2 depth in a 3D-CNN (Chang et al., ICCV 2025; arXiv:2406.19568;
+github.com/CVMI-Lab/L3DE). Weights: L3DE.pth on the authors' Google Drive; UniDepth-v2
+auto-downloads from HuggingFace.
 
-    appearance : DINOv2 ViT-G/14 patch tokens (1536-d on a 16x16 grid per frame)
-    motion     : RAFT optical flow (2 channels) between consecutive frames
-    depth      : UniDepth-v2 metric depth (1 channel)
+The sigmoid output is p(real), so score() returns 1 - sigmoid; features() is the 128-d fc1
+embedding. The frame count T=24 is fixed by fc1. Optical flow is computed with torchvision
+RAFT (the paper uses raft-things).
 
-Each stream is a stack of strided Conv3d blocks that collapse to a T x 8 x 8 volume; the
-three are concatenated (384 channels), fused by three more Conv3d layers, flattened, and
-read out by fc1 (-> 128-d) + fc2 (-> 1, sigmoid). The frame count T = 24 is baked into
-fc1's input dimension, so the released `L3DE.pth` only loads into `Net(T=24)`.
-
-Score polarity (verified against the paper): the sigmoid output is p(REAL) (the simulation
-gap is G = 1 - S, higher S = more realistic), so `score()` returns p(generated) =
-1 - sigmoid. `features()` returns the 128-d fc1 embedding.
-
-Licensing: the L3DE head + DINOv2 are Apache-2.0 and RAFT is BSD-3, but the depth proxy
-uses UniDepth-v2, which is CC-BY-NC-4.0 (code AND weights). A faithful pipeline therefore
-inherits the NON-COMMERCIAL restriction; the model-zoo entry is tagged accordingly. Weights
-are point-to-source: `L3DE.pth` is on the authors' Google Drive (not mirrored) and
-UniDepth-v2 auto-downloads from HuggingFace.
-
-Heavy (DINOv2-ViT-G + RAFT + UniDepth-v2 per clip), so a real run belongs on the cluster. The
-Net architecture, weight loading, score polarity, DINOv2 normalization (mean/std = 0.5), and
-the flow/depth encodings are verified against the upstream repo (`l3de_pipeline.py` + the
-`proxy/` extractors). The one deliberate approximation is the flow field itself: this wrapper
-computes it with torchvision RAFT (the paper uses raft-things), though the downstream [0,1] UV
-self-normalization the net consumes is matched exactly. The 3D-CNN is unit-tested with random
-weights here.
+License: CC-BY-NC-4.0 (non-commercial), from the UniDepth-v2 depth proxy; the L3DE head and
+DINOv2 are Apache-2.0, RAFT is BSD-3.
 """
 from __future__ import annotations
 
@@ -102,10 +84,9 @@ class L3DE(Detector):
         license="CC-BY-NC-4.0 (non-commercial), driven by the UniDepth-v2 depth proxy. "
                 "L3DE head + DINOv2 are Apache-2.0, RAFT is BSD-3.",
         paper="Chang et al., ICCV 2025 (arXiv:2406.19568)",
-        notes="3-cue 3D-CNN; T=24 baked into fc1 (load into Net(24)). score() = 1 - sigmoid "
-              "(sigmoid is p(real)); features() = 128-d fc1 embedding. Heavy (DINOv2-G + RAFT "
-              "+ UniDepth-v2) + non-commercial -> cluster. Flow uses torchvision RAFT "
-              "(approximates the paper's raft-things). load_weights(<L3DE.pth>).",
+        notes="3-cue 3D-CNN (DINOv2-G + RAFT + UniDepth-v2); T=24 (load into Net(24)). "
+              "score() = 1 - sigmoid; features() = 128-d fc1. Flow uses torchvision RAFT. "
+              "load_weights(<L3DE.pth>).",
     )
     T = 24
 
@@ -125,10 +106,8 @@ class L3DE(Detector):
 
     # ---- weights -------------------------------------------------------------
     def load_weights(self, path: Optional[str] = None) -> None:
-        """Load the released L3DE.pth (a bare state_dict) into Net(T=24), strict=True.
-
-        Point-to-source: fetch L3DE.pth once from the authors' Google Drive (the file id is
-        in `weights_url`) and pass the local path; VidAudit does not mirror it."""
+        """Load L3DE.pth (a bare state_dict) into Net(T=24), strict=True. Fetch it from the
+        authors' Google Drive (file id in weights_url)."""
         import torch
         if not path:
             raise ValueError("L3DE has no auto-download weights; fetch L3DE.pth from the "
@@ -194,13 +173,10 @@ class L3DE(Detector):
         return vol.float().to(self._dev())
 
     def _motion(self, frames):
-        """RAFT flow -> the self-normalized [0,1] UV map L3DE consumes -> [1, 2, T, 288, 512].
+        """RAFT flow -> self-normalized [0,1] UV map -> [1, 2, T, 288, 512].
 
-        Frames are resized to (288, 512) before RAFT, then each flow field is encoded exactly
-        as the repo's UV-PNG round-trip does: per-frame rad_max self-normalization to
-        u_n = clip(u/(2*(rad_max+1e-5)) + 0.5, 0, 1) (likewise v_n), which is what the /255
-        load recovers. Only the flow field itself is approximate (torchvision RAFT vs the
-        paper's raft-things); the [0,1] encoding the net sees is matched."""
+        Frames resized to (288, 512); per flow field u_n = clip(u/(2*(rad_max+1e-5)) + 0.5,
+        0, 1) (likewise v_n), matching the repo's UV-PNG /255 encoding."""
         import torch
         import torch.nn.functional as F
         from torchvision.transforms.functional import to_tensor
@@ -225,10 +201,8 @@ class L3DE(Detector):
     def _depth(self, frames):
         """UniDepth-v2 depth -> [1, 1, T, 288, 512].
 
-        Matches the repo's pipeline normalization order: resize each map to (288, 512), gather
-        the per-clip GLOBAL min/max BEFORE clipping, clip the stack to <=10000, then min-max to
-        [0,1] using those pre-clip global bounds (a constant-depth clip would otherwise diverge
-        if min/max were taken after the clip)."""
+        Resize each map to (288, 512), take per-clip global min/max before clipping, clip to
+        <=10000, then min-max to [0,1] using the pre-clip bounds (matches the repo's pipeline)."""
         import torch
         import torch.nn.functional as F
         from torchvision.transforms.functional import to_tensor

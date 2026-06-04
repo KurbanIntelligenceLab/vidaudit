@@ -6,12 +6,8 @@ does not return a hard 0/1 from the parsed word: it reads the model's probabilit
 on the `fake` vs `real` answer token at the verdict step (a soft, calibratable score),
 falling back to the parsed label only if the verdict token cannot be located.
 `features()` mean-pools the last decoder-layer hidden states into a per-clip embedding
-for the uniform L2-LR readout. Subclass `MLLMDetector` with the model id, prompts, and
-answer tags.
-
-These are 7-9B models (GPU + ~16 GB download); this wrapper is implemented and its
-parsing/scoring logic is unit-tested, but a real-weights run belongs on the cluster
-(like the NSG-VD wrapper). Skyra (Qwen2.5-VL-7B, CC-BY-4.0) is the first instantiation.
+for the uniform L2-LR readout. Subclass `MLLMDetector` with the model id, hub, prompts, and
+answer tags (see skyra.py, videoveritas.py, ivy.py).
 """
 from __future__ import annotations
 

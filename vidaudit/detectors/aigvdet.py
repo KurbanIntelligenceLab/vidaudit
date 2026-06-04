@@ -1,26 +1,15 @@
-"""AIGVDet (Bai, Lin, Cao; PRCV 2024, arXiv:2403.16638): a two-stream ResNet50 detector.
+"""AIGVDet: a two-stream ResNet50 AI-generated video detector (Bai, Lin, Cao; PRCV 2024;
+arXiv:2403.16638). A spatial branch runs ResNet50 over RGB frames; an optical branch runs
+ResNet50 over an RGB visualization of optical flow between consecutive frames. score() is the
+0.5/0.5 fused per-frame p(generated); features() is the 2048-d penultimate (spatial), or 4096-d
+with the optical branch, averaged over frames.
 
-    spatial branch : ResNet50 over RGB frames
-    optical branch : ResNet50 over an RGB *visualization* of optical flow between
-                     consecutive frames
+Weights: original.pth (spatial) and optical.pth (optical) on the authors' Google Drive
+(academic-research-only). load_weights(<dir>) or a single .pth (spatial only); the checkpoints
+are ResNet50 state dicts (fc = Linear(2048, 1)), optionally under a "model" key.
 
-Each branch produces a per-frame logit; per-frame sigmoids are averaged within a branch,
-then the two branch means are fused 0.5/0.5. `score()` returns that fused p(generated);
-`features()` returns the 2048-d penultimate vector (spatial), concatenated with the
-optical 2048-d when the optical branch is loaded (4096-d), averaged over frames.
-
-Weights: the authors release `original.pth` (spatial) and `optical.pth` (optical) on
-Google Drive under an academic-research-only license; VidAudit does not mirror them.
-Point `load_weights()` at the directory holding them (or pass a single `.pth` to run the
-spatial branch alone). The checkpoints are plain ResNet50 state dicts (final
-`fc = Linear(2048, 1)`), optionally wrapped under a `"model"` key.
-
-Backbone note: the paper computes flow with the princeton-vl RAFT (`raft-things`). To
-stay dependency-light and avoid vendoring, this wrapper computes flow with torchvision's
-`raft_large` and colorizes it with the standard Middlebury scheme. The **spatial branch
-is exact**; the **optical branch is an approximation** unless you swap in the paper's RAFT
-flow. Real-weights reproduction therefore belongs on the cluster (rsync the Drive
-checkpoints, pass `--weights`).
+Flow is computed with torchvision raft_large (the paper uses princeton-vl raft-things), so the
+spatial branch is exact and the optical branch is an approximation.
 """
 from __future__ import annotations
 

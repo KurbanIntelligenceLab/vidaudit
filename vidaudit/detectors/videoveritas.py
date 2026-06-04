@@ -1,11 +1,9 @@
-"""VideoVeritas (EricTan7 et al., ICML 2026; arXiv:2602.08828): a Qwen3-VL-8B MLLM that
-reasons over frames and emits a `<answer>real/fake</answer>` verdict. Apache-2.0; weights
-on ModelScope (EricTanh/VideoVeritas), so `pip install modelscope` is needed to resolve
-them.
+"""VideoVeritas: a Qwen3-VL-8B MLLM for AI-generated video detection (EricTan7 et al.,
+ICML 2026; arXiv:2602.08828). Weights: EricTanh/VideoVeritas on ModelScope (Apache-2.0;
+`pip install modelscope`).
 
-A config variant of the reusable `MLLMDetector` adapter (`hub="modelscope"`): `score()`
-returns the soft p(generated) from the verdict-token logits, `features()` pools the VLM
-hidden state. Heavy (~18 GB, GPU); a real-weights run belongs on the cluster.
+The system/user prompts below are verbatim from the repo (self_scripts/infer/infer_vllm.py):
+a final <answer>real/fake</answer> verdict.
 """
 from __future__ import annotations
 
@@ -22,9 +20,8 @@ class VideoVeritas(MLLMDetector):
         weights_url="https://www.modelscope.cn/models/EricTanh/VideoVeritas",
         license="Apache-2.0",
         paper="EricTan7 et al., ICML 2026 (arXiv:2602.08828)",
-        notes="Qwen3-VL-8B emitting a <answer>real/fake</answer> verdict; ModelScope-hosted "
-              "(pip install modelscope); score() = soft p(generated) from the verdict-token "
-              "logits. Heavy (~18GB, GPU) -> run on the cluster.",
+        notes="Qwen3-VL-8B; verbatim eval prompt; <answer>real/fake</answer> verdict. "
+              "ModelScope-hosted (pip install modelscope).",
     )
     model_id = "EricTanh/VideoVeritas"
     hub = "modelscope"

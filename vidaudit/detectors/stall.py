@@ -1,27 +1,12 @@
-"""STALL (Ben Hayun et al., CVPR 2026; arXiv:2603.15026): a training-free, zero-shot
-generated-video detector. It embeds frames with a frozen DINOv3 ViT-L/16, then scores a
-clip with two closed-form Gaussian log-likelihood branches under a whitened real-video
-reference:
+"""STALL: a training-free AI-generated video detector (Ben Hayun et al., CVPR 2026;
+arXiv:2603.15026; github.com/OmerBenHayun/STALL). A frozen DINOv3 ViT-L/16 embeds frames; a
+clip is scored by whitened spatial (MAX) and temporal (MIN) Gaussian log-likelihoods, each
+mapped to a percentile against a real-video (VATEX) calibration set. The final score is the
+mean of the two percentiles (higher = more real), so score() returns 1 - final.
 
-    spatial  : per-frame whitened embedding y_t; Gaussian log-likelihood l(y_t);
-               aggregate over frames with MAX.
-    temporal : L2-normalized consecutive-frame differences, whitened; same log-likelihood;
-               aggregate over transitions with MIN (zero-difference frames are ignored).
-
-Each raw aggregate is mapped to a percentile against a held-out set of REAL calibration
-scores (the authors fit the whitening + percentiles on VATEX and ship them as a small
-`.npz`). The final score is the mean of the two percentiles, in [0, 1], where HIGHER means
-MORE REAL. So `score()` returns p(generated) = 1 - final.
-
-There is no trained classifier (the method is training-free). The only learned artifact is
-the released calibration file `stall_params_vatex_dino_v3.npz`.
-
-Licensing / provenance: the upstream STALL repository carries NO license (all-rights-
-reserved by default), so this module REIMPLEMENTS the scoring math from the paper rather
-than vendoring the original source. The calibration params and the gated DINOv3 backbone
-(Meta DINOv3 License) are point-to-source: obtain the `.npz` from the STALL repo and DINOv3
-from Meta, and comply with their terms. DINOv3 is heavy and gated, so a real run belongs on
-the cluster; the scoring math here is unit-tested independently of the backbone.
+The upstream repo carries no license, so the scoring math is reimplemented from the paper.
+The released calibration npz and the DINOv3 backbone (Meta DINOv3 License) are obtained from
+their original sources.
 """
 from __future__ import annotations
 
@@ -128,9 +113,8 @@ class STALL(Detector):
                 "backbone under the Meta DINOv3 License (gated). Scoring math reimplemented; "
                 "params + backbone are point-to-source.",
         paper="Ben Hayun et al., CVPR 2026 (arXiv:2603.15026)",
-        notes="Training-free: frozen DINOv3 ViT-L/16 -> whitened spatial (MAX) + temporal "
-              "(MIN) Gaussian log-likelihood -> percentile vs real calibration. score() = "
-              "1 - mean percentile (higher = more real). DINOv3 is gated + heavy -> cluster; "
+        notes="Training-free; frozen DINOv3 ViT-L/16 + whitened spatial/temporal Gaussian "
+              "likelihood vs VATEX calibration. score() = 1 - mean percentile. "
               "load_weights(<stall_params_vatex_dino_v3.npz>).",
     )
     feature_names = ["spat_pct", "temp_pct", "spat_ll", "temp_ll"]

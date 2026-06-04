@@ -1,19 +1,10 @@
-"""Ivy-xDetector (IVY-FAKE; Pi3AI / AI-Safeguard, arXiv:2506.00979): an explainable
-AIGC image/video detector that is a Qwen2.5-VL fine-tune. It reasons inside
-`<think> </think>` and emits a `<conclusion>real/fake</conclusion>` verdict. The released
-public checkpoint is the 3B variant `AI-Safeguard/Ivy-Fake` on HuggingFace (ungated,
-~7.5 GB). The paper initializes from an Ivy-VL-LLaVA backbone at a sub-4B scale; the
-public weights are concretely a Qwen2.5-VL-3B-Instruct fine-tune (not 7B).
+"""Ivy-xDetector (IVY-FAKE): a Qwen2.5-VL-3B fine-tune for explainable AIGC image/video
+detection (Pi3AI / AI-Safeguard; arXiv:2506.00979). Released checkpoint: AI-Safeguard/Ivy-Fake
+on HuggingFace (3B). The model reasons in <think> and emits a <conclusion>real/fake</conclusion>
+verdict; the paper samples video at 1 fps (max 6 frames per clip).
 
-Wrapped via the reusable `MLLMDetector` adapter (`hub="hf"`): `score()` returns the soft
-p(generated) from the verdict-token logits at the `<conclusion>` step; `features()` pools
-the VLM hidden state. Heavy (~7.5 GB, GPU); a real-weights run belongs on the cluster.
-
-Licensing: the Ivy-Fake weights carry NO declared license on the HuggingFace repo, and the
-Qwen2.5-VL-3B base is under the Qwen Research License (non-commercial). Treat as
-non-commercial / research, obtain from the original source, and comply with those terms
-(see the License section of the README). The paper samples video at 1 fps (max 6 frames per
-clip); the generic adapter samples a fixed number of frames uniformly (`n_frames`, default 16).
+The weights carry no declared license; the Qwen2.5-VL-3B base is under the Qwen Research
+License (non-commercial).
 """
 from __future__ import annotations
 
@@ -21,9 +12,7 @@ from vidaudit.detectors.base import DetectorSpec
 from vidaudit.detectors.mllm import MLLMDetector
 from vidaudit.detectors.registry import register
 
-# The canonical model-card system prompt uses em-dashes ("one word--real or fake--wrapped");
-# this project forbids em-dashes, so the same instruction is rendered with commas below. The
-# verdict tags + format (<conclusion>real/fake</conclusion>) are byte-identical to upstream.
+# Upstream prompt uses em-dashes; written here with commas (no-em-dash style), tags unchanged.
 _SYS = ("You are an AI-generated content detector. Classify the media as real or fake. "
         "Provide reasoning inside <think>...</think> tags. End with exactly one word, real "
         "or fake, wrapped in <conclusion>...</conclusion>.")
@@ -38,10 +27,8 @@ class IvyXDetector(MLLMDetector):
         license="weights license undeclared; Qwen2.5-VL-3B base under the Qwen Research "
                 "License (non-commercial). Obtain from the original source.",
         paper="IVY-FAKE (Pi3AI / AI-Safeguard; arXiv:2506.00979)",
-        notes="Qwen2.5-VL-3B fine-tune emitting <conclusion>real/fake</conclusion>; score() "
-              "= soft p(generated) from the verdict-token logits, features() = pooled hidden "
-              "state. Released checkpoint is 3B (not the paper's headline scale). Heavy "
-              "(~7.5GB, GPU) -> run on the cluster; paper samples video at 1 fps.",
+        notes="Qwen2.5-VL-3B fine-tune; <conclusion>real/fake</conclusion> verdict; paper "
+              "samples video at 1 fps (max 6 frames).",
     )
     model_id = "AI-Safeguard/Ivy-Fake"
     hub = "hf"
