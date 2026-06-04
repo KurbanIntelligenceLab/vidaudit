@@ -177,7 +177,7 @@ All eight baselines are wrapped behind the plugin API and run from clips via `ru
 
 Vendored model code (PIPs++ for FVMD, the NSG-VD codebase) lives under `vidaudit/_vendor/`, kept separate from our thin wrappers and carrying its upstream license.
 
-**Weight downloads.** We mirror nothing here either — FVMD's point tracker auto-fetches from its public release; the others you obtain from their original release and pass with `--weights` (or `load_weights(path)`). `zoo/manifest.yaml` records a sha256 per checkpoint so it verifies on load.
+**Weight downloads.** FVMD's point tracker auto-fetches from its public release; obtain the others from their original release (below) and pass with `--weights` (or `load_weights(path)`). `zoo/manifest.yaml` records a sha256 per checkpoint so it verifies on load.
 
 | Checkpoint | Size | Original source |
 |---|---|---|
@@ -189,7 +189,7 @@ Excluded for now (no public weights): **DeMamba** (authors withhold the checkpoi
 
 ## Data package
 
-**We host and mirror nothing.** You download the original datasets from their official releases, and VidAudit's preprocessing tool turns that download into standardized, audited inputs — so everyone evaluates byte-identical clips without us ever redistributing copyrighted video. Two controls, one command:
+Standardize any benchmark in two steps: **download** the original dataset, then **preprocess** it into the audited inputs so everyone evaluates byte-identical clips. Two controls, one command:
 
 - **P1 canonical re-encode** (`vidaudit/data/canonical.py`): one fixed H.264 recipe normalizes codec/container fingerprints (recorded as a `recipe_id`; H.264 because the codec-MV detectors need H.264 motion vectors).
 - **P2 clip-length filter** (`vidaudit/data/filters.py`): measures duration→label leakage and enforces a common frame budget so length cannot stand in for content.
@@ -213,7 +213,7 @@ python run.py extract temporalspec --manifest data/gvb/manifest.csv --out featur
 python run.py eval --features features/ts.csv
 ```
 
-`prepare-data` writes a ready-to-extract `manifest.csv` + a `provenance.json` (recipe id, per-source counts, the original download URL). **Add a dataset** = a small adapter mapping its native layout to `Clip`s (`scan(root)`); see `vidaudit/data/datasets/`. The per-clip features you produce are yours to share; VidAudit redistributes nothing. `vidaudit/data/croissant.py` emits ML Croissant metadata for any feature tables you choose to publish.
+`prepare-data` writes a ready-to-extract `manifest.csv` + a `provenance.json` (recipe id, per-source counts, the original download URL). **Add a dataset** = a small adapter mapping its native layout to `Clip`s (`scan(root)`); see `vidaudit/data/datasets/`. `vidaudit/data/croissant.py` emits ML Croissant metadata for any feature tables you choose to publish.
 
 ## Training
 Training is a first-class, standardized subsystem, not an optional hook. The trainer learns a classifier head over a precomputed feature table (the `extract` output), so it reuses the extract pipeline and never re-decodes video in the loop; preprocessing (median-impute → z-score) matches the audit and is persisted in the checkpoint. Defaults live in `scripts/train/<model>.sh`; loss / optimizer / scheduler / head are name-addressable registries you extend with a one-line decorator, and every knob is overridable on the command line (repeatable `--set key=value`, later wins; unknown keys route to `cfg.extra`):
