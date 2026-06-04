@@ -13,7 +13,7 @@
   <img alt="Audit protocol" src="https://img.shields.io/badge/audit-P1--P6-8A2BE2.svg">
 </p>
 
-VidAudit is a standardized, **audited** evaluation suite for **AI-generated, synthetic, and deepfake video detection**. It exists because every AI-video-detection paper currently evaluates differently, a 20-paper survey shows none apply all six standard controls, and high leaderboard AUCs do not predict deployable recall. VidAudit makes the audited protocol the default and makes fair, reproducible comparison (and honest re-ranking by deployability) a single command.
+VidAudit is a standardized, **audited** evaluation suite for **AI-generated, synthetic, and deepfake video detection**. It exists because every AI-video-detection paper currently evaluates differently, our 20-paper survey shows none apply all six standard controls, and high leaderboard AUCs do not predict deployable recall. VidAudit makes the audited protocol the default and makes fair, reproducible comparison (and honest re-ranking by deployability) a single command.
 
 ---
 

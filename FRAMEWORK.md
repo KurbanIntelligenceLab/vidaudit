@@ -11,7 +11,7 @@ One repo a newcomer can clone to:
 Backed by a standardized **data package** (features + splits + provenance; bring-your-own-videos) and a **model zoo** of published-weight baselines with verified download links.
 
 ## Why
-Every AIGV-detection paper currently evaluates differently; the survey shows none apply all six controls; and high leaderboard AUCs do not predict deployable recall. This toolkit makes the audited protocol the default, makes fair reproducible comparison (and honest re-ranking by deployability) a single command, and gives future work one place to train, evaluate, and compare on equal footing.
+Every AIGV-detection paper currently evaluates differently; our 20-paper survey shows none apply all six controls; and high leaderboard AUCs do not predict deployable recall. This toolkit makes the audited protocol the default, makes fair reproducible comparison (and honest re-ranking by deployability) a single command, and gives future work one place to train, evaluate, and compare on equal footing.
 
 ## Three orthogonal capabilities (the detector contract)
 A detector (`vidaudit/detectors/base.py`) is anything that scores a clip real-vs-generated. It can do up to three independent things:
