@@ -37,36 +37,36 @@ Subclass `Detector`, set a `DetectorSpec`, and:
 Decorate with `@register("name")`. The audit harness then handles P1-P6, the metrics, the verdict, and the leaderboard row. No training loop to write (the standard trainer calls `build_model`); override `train()` only for a non-standard loop.
 
 ## Training subsystem (first-class)
-A single serializable `TrainConfig` is the hyperparameter surface; the knobs you care about (loss, data procedures, training params) are **name-addressable through registries**, so a user adds their own and references it by name without touching framework code.
+A single serializable `TrainConfig` (`vidaudit/train/config.py`, torch-free) is the hyperparameter surface; loss / optimizer / scheduler / head are **name-addressable through registries** (`vidaudit/train/registries.py`), so a user adds their own with a one-line decorator and references it by name without touching framework code.
 
 ```python
-@dataclass
+@dataclass(slots=True)
 class TrainConfig:
-    # data + data procedures
-    dataset="genvidbench"; cell="matched"; split="logo"
-    batch_size=32; augment="default"; num_workers=8
-    # optimization
-    optimizer="adamw"; lr=1e-4; weight_decay=0.05; epochs=20
-    scheduler="cosine"; warmup_steps=500; grad_clip=1.0; amp=True
-    # loss (registry: bce | focal | ...)
-    loss="bce"; loss_kwargs={}
-    # model + runtime
-    backbone=""; head={}; seed=0; out_dir="runs/{model}_{dataset}"; resume=""
-    eval_every=1; early_stop_patience=5
+    # data: a precomputed per-clip feature table (the `extract` output)
+    features=""; val_features=""; feature_cols=None; subset=None; val_frac=0.2
+    # head (registry: linear | mlp)
+    head="mlp"; hidden=(256,); dropout=0.1
+    # optimization (each name resolves against a registry)
+    loss="bce"; optimizer="adamw"; lr=1e-3; weight_decay=1e-4; momentum=0.9
+    scheduler="cosine"; epochs=50; batch_size=256; amp=True; grad_clip=1.0
+    seed=42; device="auto"; extra={}    # unknown --set keys land in extra
 ```
 
-Registries: `@register_loss`, `@register_optimizer`, `@register_augment`, `@register_scheduler`. The standard `SupervisedTrainer(detector, cfg)` owns the loop (AMP, checkpointing, periodic audited eval, early stop) and calls `detector.build_model(cfg)`. A method needing a bespoke loop overrides `Detector.train()`.
+Registries: `@register_loss` (`bce`, `focal`), `@register_optimizer` (`adamw`, `adam`, `sgd`), `@register_scheduler` (`cosine`, `step`, `none`), `@register_head` (`linear`, `mlp`). The standard `SupervisedTrainer(detector, cfg)` (`vidaudit/train/trainer.py`) owns the loop — seeding, AMP, grad-clip, per-epoch validation AUC, best-checkpoint selection — and calls `detector.build_model(cfg)`; a method needing a bespoke loop overrides `Detector.train()`. The trainer learns a head over a **precomputed feature table** (the same CSV the audit consumes), so it reuses the extract pipeline and never re-decodes video in the loop; preprocessing (median-impute → z-score) matches the audit and is persisted in the checkpoint. Label is generated-positive (`y = 1 - is_real`).
 
 **Shell scripts hold the defaults; the command line holds the freedom.**
 ```bash
-# scripts/train/waverep.sh  -- documented defaults live here
-python run.py train waverep --dataset genvidbench --cell matched \
-  --backbone dinov2_vitb14 --loss bce --lr 1e-4 --epochs 20 --augment wavelet "$@"
+# extract once, then train a head over the table:
+python run.py extract temporalspec --manifest clips.csv --out features/train.csv
+scripts/train/mlp-probe.sh features/train.csv            # documented defaults live in the script
 
-# user overrides, no code edits (the "$@" passthrough):
-scripts/train/waverep.sh --set loss=focal loss_kwargs.gamma=2.0 lr=5e-5 augment=heavy
+# user overrides, no code edits (repeatable --set, later wins; unknown keys -> cfg.extra):
+OUT=runs/probe scripts/train/mlp-probe.sh features/train.csv \
+  --set loss=focal --set focal_gamma=1.5 --set lr=3e-4 --set head=linear --set epochs=100
 ```
-Precedence: detector `default_train_config()` < YAML in `configs/` < `--set` overrides.
+Precedence: detector `default_train_config()` < the recipe script's `--set` flags < user `--set` flags. The checkpoint (`<out>/model.pt`) carries the state dict + config + feature columns + preprocessing stats + best val AUC; `<out>/metrics.json` holds the per-epoch history. The **official** numbers come from the audit (`run.py eval`) — the trainer's val AUC only selects the checkpoint.
+
+`MLP-Probe` (the standardized trainable readout, the trainable counterpart to the audit's fixed L2-LR) ships as the reference that validates this subsystem end-to-end. A paper-specific trainable detector (a ReStraV MLP head over DINOv2 features, the NSG-VD discriminator) plugs in identically: implement `build_model(cfg)` + `default_train_config()` and the same trainer drives it.
 
 ## Model zoo + weights (download, verify, cache)
 We host or link published weights with a verifiable manifest. `zoo/manifest.yaml`:
@@ -109,17 +109,18 @@ Columns: `model, ours, family, backbone, weights, benchmark, cell, readout, LOGO
 ```
 vidaudit/
   vidaudit/
-    detectors/   base.py (contract)  registry.py  temporalspec.py d3.py restrav.py
-                 waverep.py nsgvd.py fvmd.py raft.py clip.py
+    detectors/   base.py (contract)  registry.py  _extract.py (clips->table)
+                 temporalspec.py d3.py restrav.py waverep.py nsgvd.py fvmd.py
+                 raft.py clip.py  probe.py (trainable readout)
     data/        datasets/base.py (Dataset ABC + registry)  datasets/<name>.py
-                 canonical.py (P1)  filters.py (P2)  cells.py (matched/LOGO)  fetch.py
+                 cells.py (matched/LOGO)  canonical.py (P1) filters.py (P2) fetch.py [planned]
     audit/       protocol.py (P1-P6)  metrics.py  verdict.py  leaderboard.py
     train/       config.py (TrainConfig)  trainer.py (SupervisedTrainer)
-                 losses.py optim.py augment.py schedulers.py (registries)
-  scripts/       train/<model>.sh   eval/<model>.sh   (defaults + "$@" passthrough)
-  configs/       per-model + per-cell YAML
+                 registries.py (loss/optim/sched/head)  data.py (feature tables)
+    features/    mv.py (shared 13-d codec/MV extractor)
+  scripts/       train/<model>.sh + README   (defaults + repeatable --set passthrough)
   zoo/           manifest.yaml (weights: url + sha256 + license)
-  run.py         eval | train | leaderboard | fetch-weights | fetch-data
+  run.py         extract | eval | train | leaderboard | fetch-weights[planned] | fetch-data[planned]
   leaderboard.csv  LEADERBOARD.md  README.md  FRAMEWORK.md
 ```
 
@@ -144,7 +145,7 @@ Excluded for now (no public weights): **DeMamba** (authors withhold, GitHub issu
 
 ## Scope discipline (for the WACV paper)
 - **Eval is what we run for the paper:** published weights, native heads, and training-free scores through the audit. This populates the leaderboard and surfaces failing models (high AUC but collapses at a deployable threshold, or rides dataset identity).
-- **Training is built and real, but not exercised for headline numbers:** the trainer + shell scripts + configs ship and are validated on at least one trainable model so the platform is genuinely reproducible and extensible. We do not retrain methods to manufacture paper results.
+- **Training is built and real, but not exercised for headline numbers:** the standard trainer + shell-script recipes ship and are validated end-to-end on the `MLP-Probe` reference (train → checkpoint → reload → predict), so the platform is genuinely reproducible and extensible. We do not retrain methods to manufacture paper results.
 
 ## Build phases (engineering order, not deadline-driven)
 1. **Core eval path** : `base.py`, `registry.py`, `run.py`, `audit/{metrics,verdict,leaderboard}.py`, `data/{datasets/base,cells}.py`, reusing the existing matched-cell + LOGO + metric code (`Baselines/evaluate_features.py`, `run_audited_metrics.py`).
@@ -160,4 +161,5 @@ Excluded for now (no public weights): **DeMamba** (authors withhold, GitHub issu
 - [x] `run.py` CLI: `extract` (clips → features), `eval --features` (audit), `leaderboard`
 - [x] All 8 detector wrappers from clips: D3, ReStraV, CLIP, RAFT, TemporalSpec (clone-and-run, verified) + WaveRep, FVMD (checkpoints, verified) + NSG-VD (ADM diffusion + Swin; verifying). Vendored model code in `vidaudit/_vendor/` (PIPs++, NSG-VD), separate from the thin wrappers
 - [x] Weight-fetch zoo (`zoo.py` + `zoo/manifest.yaml`, sha256-verified); checkpoints on cluster permanent storage (public mirror TBD)
-- [ ] Standardized data package + Croissant; HF dataset + Space; per-detector training recipes (trainer scaffolded); AIGVDBench combined cell (D3 re-run at XCLIP-B/16)
+- [x] Standardized trainer (`TrainConfig` + loss/optim/sched/head registries + uniform loop), validated end-to-end on `MLP-Probe`
+- [ ] Standardized data package + Croissant; HF dataset + Space; per-detector paper training recipes (ReStraV/WaveRep/NSG-VD heads); AIGVDBench combined cell (D3 re-run at XCLIP-B/16)

@@ -86,7 +86,7 @@ python run.py leaderboard
 `clips.csv` is a manifest with columns `(video_id, generator, label, is_real, mp4_path)`. The
 auto-download detectors (D3, ReStraV, CLIP, RAFT) need no setup; TemporalSpec needs only the
 bundled PyAV/ffmpeg; WaveRep/FVMD/NSG-VD take a checkpoint (`--weights`, or fetched from the zoo).
-Training (`scripts/train/<model>.sh`) and `fetch-data` are scaffolded; see the roadmap.
+`run.py train <model> --features <table>` learns a head over the extracted table (see [Training](#training)); `fetch-data` is planned (see the roadmap).
 
 ## Add your own detector (plugin API)
 Subclass `Detector`, set a `DetectorSpec`, implement at least one evidence interface, and register it. The audit, metrics, and leaderboard row come for free:
@@ -149,23 +149,29 @@ We **cannot redistribute** the GenVidBench / AIGVDBench source videos (copyright
 - Croissant metadata: _(coming)_
 
 ## Training
-Training is a first-class, standardized subsystem. Defaults live in `scripts/train/<model>.sh`; the hyperparameters you care about (loss, optimizer, augmentation, schedule) are name-addressable registries you can extend, and everything is overridable on the command line:
+Training is a first-class, standardized subsystem, not an optional hook. The trainer learns a classifier head over a precomputed feature table (the `extract` output), so it reuses the extract pipeline and never re-decodes video in the loop; preprocessing (median-impute → z-score) matches the audit and is persisted in the checkpoint. Defaults live in `scripts/train/<model>.sh`; loss / optimizer / scheduler / head are name-addressable registries you extend with a one-line decorator, and every knob is overridable on the command line (repeatable `--set key=value`, later wins; unknown keys route to `cfg.extra`):
 ```bash
-# documented defaults in the script; user overrides via --set (no code edits)
-scripts/train/waverep.sh --set loss=focal loss_kwargs.gamma=2.0 lr=5e-5 augment=heavy
+# extract once, then train a head over the table
+python run.py extract temporalspec --manifest clips.csv --out features/train.csv
+scripts/train/mlp-probe.sh features/train.csv          # documented defaults
+
+# override loss / lr / schedule / head with no code edits
+OUT=runs/probe scripts/train/mlp-probe.sh features/train.csv \
+  --set loss=focal --set focal_gamma=1.5 --set lr=3e-4 --set head=linear --set epochs=100
 ```
-For the paper we run **eval only** (published weights and native heads through the audit); the trainer ships and is validated, but we do not retrain methods to manufacture results.
+`MLP-Probe` (the trainable counterpart to the audit's fixed L2-LR readout) ships as the reference that validates the trainer end-to-end; paper-specific trainable heads (ReStraV, NSG-VD) plug in via the same `build_model` + `default_train_config`. For the paper we run **eval only** (published weights and native heads through the audit); the trainer ships and is validated, but we do not retrain methods to manufacture results.
 
 ## Roadmap
 - [x] Plugin API (eval / load-weights / train as three orthogonal capabilities)
 - [x] Unified conda environment (pinned + lockfile)
 - [x] Audit engine in `vidaudit/audit/` (matched-cell LOGO + RvR + the metric tuple + both verdicts), reproduces the paper numbers on real feature CSVs
-- [x] `run.py` CLI: `extract`, `eval --features`, `leaderboard`
+- [x] `run.py` CLI: `extract`, `eval --features`, `train`, `leaderboard`
 - [x] Detector wrappers for all 8 baselines (auto-download tier + checkpoint tier), each smoke-tested from clips
 - [x] Weight-fetch zoo (`fetch_weights` + `zoo/manifest.yaml`, sha256-verified)
 - [ ] Public weight mirror + standardized data package + Croissant `[planned]`
 - [ ] HuggingFace dataset + leaderboard Space `[planned]`
-- [ ] Training recipes per detector (trainer scaffolding is in place) `[planned]`
+- [x] Standardized trainer (`TrainConfig` + registries + uniform loop), validated end-to-end on `MLP-Probe`
+- [ ] Per-detector paper training recipes (ReStraV / WaveRep / NSG-VD heads) `[next]`
 - [ ] AIGVDBench combined cross-dataset cell (D3 re-run at XCLIP-B/16) `[planned]`
 
 See `FRAMEWORK.md` for the full design, the plugin contract, and the build phases.

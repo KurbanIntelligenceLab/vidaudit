@@ -4,7 +4,7 @@
     python run.py leaderboard                      # render LEADERBOARD.md from leaderboard.csv
     python run.py eval --features clips.csv        # audit a precomputed feature table
     python run.py eval <model>                     # audit a registered detector from clips [in progress]
-    python run.py train <model>                    # train a method with a recipe         [in progress]
+    python run.py train <model> --features f.csv   # train a method's head via the standard trainer
     python run.py fetch-weights <name>             # download + verify weights            [planned]
     python run.py fetch-data <name>                # fetch a dataset package              [planned]
 """
@@ -48,8 +48,14 @@ def main(argv=None) -> int:
     ex.add_argument("--adm-ckpt", default=None,
                     help="NSG-VD only: path to the ADM diffusion model (256x256_diffusion_uncond.pt)")
 
-    tr = sub.add_parser("train", help="train a detector that ships a recipe [in progress]")
-    tr.add_argument("model")
+    tr = sub.add_parser("train", help="train a detector's head via the standard trainer")
+    tr.add_argument("model", help="a trainable detector (e.g. mlp-probe)")
+    tr.add_argument("--features", help="training feature CSV (the `extract` output)")
+    tr.add_argument("--val-features", default=None, help="held-out feature CSV (else split --features)")
+    tr.add_argument("--subset", default=None, help="matched-cell CSV (video_id, generator)")
+    tr.add_argument("--out", default="runs/train", help="output dir for the checkpoint + metrics")
+    tr.add_argument("--set", dest="overrides", action="append", default=[], metavar="KEY=VALUE",
+                    help="override any TrainConfig field (repeatable), e.g. --set lr=3e-4 --set epochs=100")
 
     for name in ("fetch-weights", "fetch-data"):
         s = sub.add_parser(name, help=f"{name.replace('-', ' ')} (download + verify) [planned]")
@@ -93,9 +99,34 @@ def main(argv=None) -> int:
               "`python run.py eval --features <csv>`.", file=sys.stderr)
         return 2
 
-    if args.cmd in ("train", "fetch-weights", "fetch-data"):
+    if args.cmd == "train":
+        from vidaudit.detectors.registry import get
+        from vidaudit.train.config import apply_overrides
+        det = get(args.model)
+        if not det.is_trainable:
+            print(f"`{args.model}` is eval-only (trainable=False): a training-free method "
+                  f"or a frozen reference. Trainable detectors expose build_model().", file=sys.stderr)
+            return 2
+        cfg = det.default_train_config()
+        if args.features:
+            cfg.features = args.features
+        if args.val_features:
+            cfg.val_features = args.val_features
+        if args.subset:
+            cfg.subset = args.subset
+        apply_overrides(cfg, args.overrides)
+        if not cfg.features:
+            print("training needs a feature table: `train <model> --features <extract.csv>` "
+                  "(extract a backbone's features first).", file=sys.stderr)
+            return 2
+        out = det.train(cfg, [], args.out)
+        print(f"trained {args.model} -> {out}")
+        return 0
+
+    if args.cmd in ("fetch-weights", "fetch-data"):
         print(f"`{args.cmd}` is not wired yet (see the roadmap in README.md). "
-              f"Live now: `python run.py leaderboard` and `python run.py eval --features <csv>`.",
+              f"Live now: `python run.py leaderboard`, `eval --features <csv>`, "
+              f"`extract <model>`, and `train <model> --features <csv>`.",
               file=sys.stderr)
         return 2
 
