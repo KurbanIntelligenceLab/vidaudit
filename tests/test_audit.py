@@ -9,7 +9,7 @@ import pytest
 
 from vidaudit.audit import metrics as M
 from vidaudit.audit import verdict as V
-from vidaudit.audit.protocol import audit_features
+from vidaudit.audit.protocol import audit_features, audit_scores
 from vidaudit.data.cells import apply_subset, resolve_feature_cols
 
 
@@ -96,3 +96,41 @@ def test_cells_resolve_and_subset():
     sub = pd.DataFrame({"video_id": ["a", "c"], "generator": ["g1", "g2"]})
     filt, audit = apply_subset(df, sub)
     assert len(filt) == 2 and audit["rows_in_subset"] == 2
+
+
+def _score_table(rng, *, gens, n=60, real_mu=0.2, gen_mu=0.8, sd=0.1, src_shift=0.0):
+    """Two real sources + several generators with a fixed p(generated) `score` column."""
+    rows = []
+    for si, src in enumerate(("real_a", "real_b")):
+        for i in range(n):
+            rows.append({"video_id": f"{src}_{i}", "generator": src, "is_real": 1,
+                         "score": float(rng.normal(real_mu + si * src_shift, sd))})
+    for g in gens:
+        for i in range(n):
+            rows.append({"video_id": f"{g}_{i}", "generator": g, "is_real": 0,
+                         "score": float(rng.normal(gen_mu, sd))})
+    return pd.DataFrame(rows)
+
+
+def test_audit_scores_native_head():
+    """A fixed score that separates real from generated audits as certified/usable, and
+    (both real sources sharing a distribution) shows no real-vs-real leakage."""
+    rng = np.random.default_rng(0)
+    rec = audit_scores(_score_table(rng, gens=["g1", "g2", "g3"]), "score")
+    assert rec["readout"] == "native-score" and rec["n_features"] == 0
+    assert rec["logo_ood"] > 0.9
+    assert rec["logo_id"] == rec["logo_ood"]          # fixed head: no train/test asymmetry
+    assert rec["rvr"] is not None and rec["rvr"] < 0.7
+    assert rec["floor_verdict"] == "certified" and rec["deploy_tier"] == "usable"
+
+
+def test_audit_scores_flags_real_source_leakage():
+    """If the score also separates the two real sources, RvR rises (dataset-identity leak)."""
+    rng = np.random.default_rng(1)
+    rec = audit_scores(_score_table(rng, gens=["g1", "g2"], src_shift=3.0), "score")
+    assert rec["rvr"] > 0.8                            # score tells the real sources apart
+
+
+def test_audit_scores_missing_column_raises():
+    with pytest.raises(ValueError):
+        audit_scores(pd.DataFrame({"video_id": ["a"], "generator": ["g"], "is_real": [0]}), "nope")

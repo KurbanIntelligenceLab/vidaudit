@@ -2,7 +2,8 @@
 """VidAudit command-line entry point.
 
     python run.py leaderboard                      # render LEADERBOARD.md from leaderboard.csv
-    python run.py eval --features clips.csv        # audit a precomputed feature table
+    python run.py eval --features clips.csv        # audit a feature table (retrains the L2-LR readout)
+    python run.py eval --scores clips.csv          # audit a fixed native/trained score (no readout)
     python run.py eval <model>                     # audit a registered detector from clips [in progress]
     python run.py train <model> --features f.csv   # train a method's head via the standard trainer
     python run.py fetch-weights <name>             # download + sha256-verify weights from the zoo
@@ -25,9 +26,11 @@ def main(argv=None) -> int:
     lb.add_argument("--csv", default=None, help="input CSV (default: ./leaderboard.csv)")
     lb.add_argument("--out", default=None, help="output markdown (default: ./LEADERBOARD.md)")
 
-    ev = sub.add_parser("eval", help="audit a detector, or a precomputed feature table via --features")
+    ev = sub.add_parser("eval", help="audit a feature table (--features) or a native/trained score (--scores)")
     ev.add_argument("model", nargs="?", default=None, help="registered detector name (clip eval: in progress)")
-    ev.add_argument("--features", help="precomputed per-clip feature CSV to audit")
+    ev.add_argument("--features", help="precomputed per-clip feature CSV to audit (retrains the L2-LR readout)")
+    ev.add_argument("--scores", help="per-clip table with a fixed score column to audit (native/trained head, no readout)")
+    ev.add_argument("--score-col", default="score", help="score column name for --scores (default: score)")
     ev.add_argument("--subset", default=None, help="matched-cell CSV with (video_id, generator)")
     ev.add_argument("--feature-cols", default=None,
                     help="explicit cols / 'auto:prefix=v,a'; default = all numeric except metadata")
@@ -88,6 +91,16 @@ def main(argv=None) -> int:
         return 0
 
     if args.cmd == "eval":
+        if args.scores:
+            import json
+            from vidaudit.audit.protocol import audit_scores
+            from vidaudit.data.cells import read_feature_table
+            df = read_feature_table(args.scores, arrow=args.arrow)
+            rec = audit_scores(df, args.score_col, subset=args.subset)
+            rec.pop("per_generator", None)
+            rec.pop("failure_audit", None)
+            print(json.dumps(rec, indent=2))
+            return 0
         if args.features:
             import json
             from vidaudit.audit.protocol import audit_features

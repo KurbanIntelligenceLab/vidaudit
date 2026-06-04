@@ -176,3 +176,76 @@ def audit_features(df: pd.DataFrame, feature_cols: Union[str, Sequence[str], Non
         "rvr_sources": rvr["sources"] if rvr else None,
         "failure_audit": failure,
     }
+
+
+# --- native-head / trained-head path: audit a FIXED per-clip score (no readout) ------
+def run_logo_scores(df: pd.DataFrame, score_col: str) -> Dict:
+    """Per-held-generator OOD AUC of a FIXED per-clip score (a native or trained head),
+    on the SAME test split run_logo uses, so it is directly comparable to the readout
+    column. No retraining, so for a fixed score ID == OOD."""
+    real = df[df["is_real"] == 1].reset_index(drop=True)
+    _, real_te = train_test_split(real, test_size=0.2, random_state=SEED)
+    gens = sorted(df.loc[df["is_real"] == 0, "generator"].astype(str).unique().tolist())
+    gs = {g: train_test_split(df[df["generator"].astype(str) == g].reset_index(drop=True),
+                              test_size=0.2, random_state=SEED) for g in gens}
+    ood_preds, per_gen = {}, {}
+    for held in gens:
+        _, held_te = gs[held]
+        te = pd.concat([real_te, held_te], ignore_index=True)
+        yte = np.concatenate([np.zeros(len(real_te), int), np.ones(len(held_te), int)])
+        s = pd.to_numeric(te[score_col], errors="coerce").to_numpy()
+        ood_preds[held] = (yte, s)
+        a = float(M.auc(yte, s))
+        per_gen[held] = {"ID_auc": a, "OOD_auc": a,
+                         "n_real_test": int((yte == 0).sum()), "n_held_test": int((yte == 1).sum())}
+    logo = float(np.mean([v["OOD_auc"] for v in per_gen.values()])) if per_gen else float("nan")
+    return {"per_generator": per_gen, "ood_preds": ood_preds, "logo_id": logo, "logo_ood": logo}
+
+
+def run_rvr_scores(df: pd.DataFrame, score_col: str) -> Optional[Dict]:
+    """Real-vs-real floor for a fixed score: does the score separate the two real
+    sources (dataset-identity leakage)? Folded AUC (direction-agnostic, since the score
+    was not fit to this task) on the same stratified real test split. None if <2 reals."""
+    real = df[df["is_real"] == 1].reset_index(drop=True)
+    sources = sorted(real["generator"].astype(str).unique().tolist())
+    if len(sources) < 2:
+        return None
+    y = (real["generator"].astype(str) == sources[-1]).astype(int).to_numpy()
+    s = pd.to_numeric(real[score_col], errors="coerce").to_numpy()
+    _, te = train_test_split(np.arange(len(y)), test_size=0.2, stratify=y, random_state=SEED)
+    a = float(M.auc(y[te], s[te]))
+    return {"sources": sources, "auc": max(a, 1.0 - a)}
+
+
+def audit_scores(df: pd.DataFrame, score_col: str = "score", *,
+                 subset: Union[str, pd.DataFrame, None] = None) -> Dict:
+    """Audit a FIXED per-clip score (native head like D3's, or a trained head's output)
+    through the same structure as audit_features but WITHOUT retraining a readout. This
+    closes the loop: `extract --kind score` (or a trained head's predictions) feed
+    straight into the audited metric tuple + both verdicts."""
+    failure = None
+    if subset is not None:
+        df, failure = apply_subset(df, subset)
+    if score_col not in df.columns:
+        raise ValueError(f"score column {score_col!r} not in table; columns: {list(df.columns)[:12]}")
+    df = df[pd.to_numeric(df[score_col], errors="coerce").notna()].reset_index(drop=True)
+
+    logo = run_logo_scores(df, score_col)
+    suite = audited_suite(logo["ood_preds"])
+    rvr = run_rvr_scores(df, score_col)
+    rvr_auc = rvr["auc"] if rvr else None
+    margin = None if rvr_auc is None else logo["logo_ood"] - rvr_auc
+    return {
+        "readout": "native-score", "score_col": score_col,
+        "n_features": 0, "n_clips": int(len(df)),
+        "logo_id": round(logo["logo_id"], 4), "logo_ood": round(logo["logo_ood"], 4),
+        "rvr": None if rvr_auc is None else round(rvr_auc, 4),
+        "margin": None if margin is None else round(margin, 4),
+        "pauc10": round(suite["pauc10"], 4), "tpr1": round(suite["tpr1"], 4),
+        "tpr01": round(suite["tpr01"], 4), "brier": round(suite["brier"], 4),
+        "ece": round(suite["ece"], 4),
+        "floor_verdict": V.floor_verdict(logo["logo_ood"], rvr_auc),
+        "deploy_tier": V.deploy_tier(suite["tpr01"]),
+        "per_generator": logo["per_generator"], "rvr_sources": rvr["sources"] if rvr else None,
+        "failure_audit": failure,
+    }
