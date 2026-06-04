@@ -114,6 +114,23 @@ def test_train_alternative_components(tmp_path):
     assert len(m["history"]) == 40 and m["best_val_auc"] > 0.65
 
 
+def test_restrav_trainable_head(tmp_path):
+    """A published backbone detector (ReStraV) trains a head over its 21-d features
+    through the same trainer (build_model + default_train_config), no DINOv2 needed."""
+    from vidaudit.detectors.registry import get
+    det = get("restrav")
+    assert det.is_trainable and det.spec.trainable
+    assert det.default_train_config().hidden == (64,)        # ReStraV-specific recipe
+    csv = str(tmp_path / "restrav_feats.csv")
+    _synth_features(csv, d=21)                                # 21-d, like ReStraV features()
+    cfg = det.default_train_config()
+    cfg.features, cfg.epochs, cfg.batch_size = csv, 30, 64
+    out_dir = str(tmp_path / "run")
+    det.train(cfg, [], out_dir)
+    m = json.load(open(os.path.join(out_dir, "metrics.json")))
+    assert m["best_val_auc"] > 0.7
+
+
 def test_train_with_separate_val_features(tmp_path):
     """cfg.val_features uses a held-out table instead of splitting the train table."""
     from vidaudit.detectors.registry import get

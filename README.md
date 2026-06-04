@@ -178,7 +178,8 @@ OUT=runs/probe scripts/train/mlp-probe.sh features/train.csv \
 - [ ] Public weight mirror (host the cluster checkpoints over HTTP) `[planned]`
 - [ ] HuggingFace dataset + leaderboard Space `[planned]`
 - [x] Standardized trainer (`TrainConfig` + registries + uniform loop), validated end-to-end on `MLP-Probe`
-- [ ] Per-detector paper training recipes (ReStraV / WaveRep / NSG-VD heads) `[next]`
+- [x] First per-detector recipe: ReStraV trainable head over the standard trainer (`scripts/train/restrav.sh`)
+- [ ] WaveRep / NSG-VD trainable heads `[next]`
 - [ ] AIGVDBench combined cross-dataset cell (D3 re-run at XCLIP-B/16) `[planned]`
 
 See `FRAMEWORK.md` for the full design, the plugin contract, and the build phases.

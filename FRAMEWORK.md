@@ -164,4 +164,5 @@ Excluded for now (no public weights): **DeMamba** (authors withhold, GitHub issu
 - [x] Weight-fetch zoo (`zoo.py` + `zoo/manifest.yaml`, sha256-verified); checkpoints on cluster permanent storage (public mirror TBD)
 - [x] Standardized trainer (`TrainConfig` + loss/optim/sched/head registries + uniform loop), validated end-to-end on `MLP-Probe`
 - [x] Standardized data package: P1 canonical re-encode + P2 length filter + local reconstruct (`fetch-data`) + Croissant emitter
-- [ ] Public weight mirror + HF dataset + Space; per-detector paper training recipes (ReStraV/WaveRep/NSG-VD heads); AIGVDBench combined cell (D3 re-run at XCLIP-B/16)
+- [x] First per-detector training recipe: ReStraV trainable head (`scripts/train/restrav.sh`) over the standard trainer
+- [ ] Public weight mirror + HF dataset + Space; WaveRep/NSG-VD trainable heads; AIGVDBench combined cell (D3 re-run at XCLIP-B/16)

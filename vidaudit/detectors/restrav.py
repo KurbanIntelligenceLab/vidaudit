@@ -26,10 +26,12 @@ _IMG = 224
 class ReStraV(Detector):
     spec = DetectorSpec(
         name="ReStraV", backbone="DINOv2 ViT-S/14", family="appearance",
-        published_weights=False, trainable=False, needs_gpu=True,
+        published_weights=False, trainable=True, needs_gpu=True,
         paper="Internò et al., NeurIPS 2025 (arXiv:2507.00583)",
         notes="21-d perceptual-straightening trajectory geometry over frozen DINOv2-S "
-              "(torch.hub auto-download); no external weights.",
+              "(torch.hub auto-download); no external weights. Trainable: the standard "
+              "trainer fits a head over the 21-d features (the published features->audit "
+              "L2-LR readout remains the leaderboard row).",
     )
 
     def __init__(self, n_frames: int = _NUM_FRAMES, window_sec: float = _WINDOW_SEC,
@@ -84,3 +86,19 @@ class ReStraV(Detector):
             Z = tokens.flatten(1).unsqueeze(0)                         # [1, T, (1+P)*D]
             vec = self._features_from_Z(Z)[0]
         return vec.detach().cpu().numpy()
+
+    # ---- trainable head over the 21-d features (the standard trainer drives this) ----
+    def default_train_config(self):
+        """A small head suits the 21-d feature vector; train more epochs since it is light."""
+        from vidaudit.train.config import TrainConfig
+        return TrainConfig(head="mlp", hidden=(64,), dropout=0.1, loss="bce",
+                           optimizer="adamw", lr=1e-3, weight_decay=1e-4,
+                           scheduler="cosine", epochs=80, batch_size=256)
+
+    def build_model(self, cfg):
+        from vidaudit.train.registries import build_head
+        in_dim = cfg.extra.get("in_dim")
+        if not in_dim:
+            raise ValueError("the trainer sets cfg.extra['in_dim'] from the feature table "
+                             "before build_model(); extract ReStraV features first")
+        return build_head(cfg.head, in_dim, cfg)
