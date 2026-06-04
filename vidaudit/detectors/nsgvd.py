@@ -34,7 +34,7 @@ class NSGVD(Detector):
     spec = DetectorSpec(
         name="NSG-VD", backbone="ADM 256 diffusion + Swin discriminator", family="forensic",
         published_weights=True, trainable=False, needs_gpu=True,
-        weights_url="see zoo/manifest.yaml (nsgvd + nsgvd-adm); hosted on BigRed Data/",
+        weights_url="see zoo/manifest.yaml (nsgvd + nsgvd-adm); obtain from the original release",
         paper="Zhang et al., NeurIPS 2025 (arXiv:2510.08073)",
         notes="diffusion-noise NSG feature -> Swin 300-d. Heavy: ~2GB ADM model + per-gen Swin "
               "ckpt; vendored codebase in vidaudit/_vendor/nsgvd (contained, lazy).",
