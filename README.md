@@ -171,7 +171,8 @@ OUT=runs/probe scripts/train/mlp-probe.sh features/train.csv \
 - [x] Plugin API (eval / load-weights / train as three orthogonal capabilities)
 - [x] Unified conda environment (pinned + lockfile)
 - [x] Audit engine in `vidaudit/audit/` (matched-cell LOGO + RvR + the metric tuple + both verdicts), reproduces the paper numbers on real feature CSVs
-- [x] `run.py` CLI: `extract`, `eval --features`, `train`, `leaderboard`, `fetch-weights`, `fetch-data`
+- [x] `run.py` CLI: `extract`, `eval --features`, `eval --scores`, `train`, `leaderboard`, `fetch-weights`, `fetch-data`
+- [x] Closed extract/train → eval loop: `audit_scores` audits a native or trained head's own scores (no readout) through the same LOGO + RvR + metric tuple + verdicts
 - [x] Detector wrappers for all 8 baselines (auto-download tier + checkpoint tier), each smoke-tested from clips
 - [x] Weight-fetch zoo (`fetch_weights` + `zoo/manifest.yaml`, sha256-verified)
 - [x] Standardized data package: P1 canonical re-encode + P2 length filter + local reconstruct (`fetch-data`) + Croissant emitter
