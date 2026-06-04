@@ -1,4 +1,6 @@
-<h1 align="center">VidAudit</h1>
+<p align="center">
+  <img src="figures/logo.png" alt="VidAudit" width="560">
+</p>
 
 <p align="center">
   <b>An audited benchmark, leaderboard, and toolkit for AI-generated video detection.</b><br>
@@ -16,6 +18,12 @@ VidAudit is a standardized, **audited** evaluation suite for **AI-generated, syn
 ---
 
 ## 🏆 Audited leaderboard
+
+<p align="center">
+  <img src="figures/beyond_auc.png" alt="Leaderboard AUC vs. deployable recall" width="620">
+</p>
+
+<sub>Hollow = the leaderboard AUC papers report; filled = deployable recall (TPR at FPR 0.1%) on the matched 27k cell. High AUC, near-zero recall: most methods collapse at a usable operating point — exactly what the audit surfaces.</sub>
 
 The primary cell is the **matched 27k-clip GenVidBench cell** under leave-one-generator-out (LOGO) evaluation. The headline number papers report is **LOGO-OOD AUC**; the audit adds the columns that decide whether it is real: the **real-vs-real floor** (`RvR`), the **above-floor margin**, and **deployable recall** (`TPR@0.1%`). Sorted by OOD AUC, so high-AUC methods visibly separate from genuinely robust ones.
 
