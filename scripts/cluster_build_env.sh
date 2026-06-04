@@ -1,13 +1,18 @@
 #!/usr/bin/env bash
 # Build VidAudit's own conda env on BigRed, ON THE LOGIN NODE (it has internet;
-# GPU/compute nodes do not), onto PROJECT storage (HOME quota is tiny and fills up
-# -- the package cache + the ~8 GB CUDA env must not live under /N/u).
+# compute nodes do not), onto PROJECT storage (HOME quota is tiny and fills up --
+# the package cache + the ~8 GB CUDA env must not live under /N/u).
 #
-# The login node has no GPU, so conda would normally resolve the *cpu* build of
-# pytorch. We force the CUDA build by setting the __cuda virtual package via
-# CONDA_OVERRIDE_CUDA; torch.version.cuda is then non-null and the GPU job
-# (scripts/cluster_verify_nsgvd.sbatch) verifies torch.cuda.is_available() on a
-# real GPU. Override the CUDA version with CUDA_OVERRIDE=12.x if needed.
+# Two subtleties this handles:
+#  1) The login node has no GPU, so the __cuda virtual package is absent and conda
+#     would resolve the *cpu* build of pytorch. CONDA_OVERRIDE_CUDA supplies __cuda
+#     so the CUDA build is installable.
+#  2) Even with __cuda present, conda treats cpu and cuda builds as equal candidates
+#     and may still pick cpu. So we PIN the build explicitly (pytorch=*=cudaNNN*).
+# conda-forge ships pytorch 2.10 for py3.14 only as CUDA 12.9 (cuda129_*), so the
+# default override is 12.9 (runs on any CUDA-12.x driver via minor-version compat;
+# the GPU job then asserts torch.cuda.is_available() on a real GPU). Override with
+# CUDA_OVERRIDE=12.x / CUDA_BUILD=cudaNNN if conda-forge's build matrix changes.
 #
 #   ssh bigred 'bash /N/project/de_briujn_graph/Projects/vidaudit/scripts/cluster_build_env.sh'
 set -euo pipefail
@@ -17,23 +22,26 @@ module load conda
 REPO=/N/project/de_briujn_graph/Projects/vidaudit
 PREFIX="$REPO/.conda/envs/vidaudit"
 export CONDA_PKGS_DIRS="$REPO/.conda/pkgs"     # package + repodata cache off HOME
+export CONDA_OVERRIDE_CUDA="${CUDA_OVERRIDE:-12.9}"
+CUDA_BUILD="${CUDA_BUILD:-cuda129}"
 mkdir -p "$CONDA_PKGS_DIRS"
 cd "$REPO"
 
-echo "=== solving + creating $PREFIX (CUDA build forced) ==="
-CONDA_OVERRIDE_CUDA="${CUDA_OVERRIDE:-12.6}" \
-  conda env create -p "$PREFIX" -f environment.yml --yes \
-  || CONDA_OVERRIDE_CUDA="${CUDA_OVERRIDE:-12.6}" \
-     conda env update -p "$PREFIX" -f environment.yml --prune
+echo "=== [1/4] create $PREFIX from environment.yml (CUDA __cuda=$CONDA_OVERRIDE_CUDA) ==="
+conda env create -p "$PREFIX" -f environment.yml \
+  || conda env update -p "$PREFIX" -f environment.yml --prune
 
+echo "=== [2/4] force the CUDA build (so it is never the cpu fallback) ==="
+conda install -p "$PREFIX" -c conda-forge -y "pytorch=*=${CUDA_BUILD}*"
+
+echo "=== [3/4] editable install of vidaudit ==="
 conda run -p "$PREFIX" pip install -e .
 
-echo "=== verify torch is the CUDA build (login node has no GPU, so is_available()=False here) ==="
+echo "=== [4/4] verify torch is the CUDA build (login node has no GPU -> is_available()=False here) ==="
 conda run -p "$PREFIX" python - <<'PY'
 import torch
-print("torch", torch.__version__)
-print("torch.version.cuda", torch.version.cuda)
-assert torch.version.cuda is not None, "CPU build resolved -- re-run with CUDA_OVERRIDE set"
+print("torch", torch.__version__, "| torch.version.cuda", torch.version.cuda)
+assert torch.version.cuda is not None, "CPU build resolved -- check CUDA_OVERRIDE / CUDA_BUILD"
 print("OK: CUDA-compiled torch. cuda.is_available() will be True on a GPU node.")
 PY
-echo "=== DONE: activate with  conda activate $PREFIX ==="
+echo "=== DONE: GPU smoke -> sbatch scripts/cluster_verify_nsgvd.sbatch ==="
