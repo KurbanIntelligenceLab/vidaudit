@@ -63,3 +63,27 @@ nsgvd-adm:
       url: ""              # not mirrored: obtain from the OpenAI guided-diffusion release; pass --weights <local ckpt>
       sha256: "a37c32fffd316cd494cf3f35b339936debdc1576dad13fe57c42399a5dbc78b1"
       size_mb: 2109
+
+l3de:
+  paper: "Chang et al., ICCV 2025 (arXiv:2406.19568)"
+  license: "CC-BY-NC-4.0 (NON-COMMERCIAL; driven by the UniDepth-v2 depth proxy). L3DE head + DINOv2 Apache-2.0, RAFT BSD-3."
+  backbone: "DINOv2-ViT-G + RAFT flow + UniDepth-v2 depth -> 3D-CNN (Net, T=24)"
+  weights:
+    - file: L3DE.pth
+      url: ""              # not mirrored: authors' Google Drive (id 1wBAAsJPcsT_bIKXetDbd23PKjmCUtb5s); pass --weights <L3DE.pth>
+      sha256: ""
+      size_mb: null
+# L3DE also needs UniDepth-v2 (auto-downloads from HF lpiccinelli/unidepth-v2-vits14; CC-BY-NC),
+# DINOv2-ViT-G (torch.hub, Apache-2.0), and RAFT (torchvision). Non-commercial use only.
+
+stall:
+  paper: "Ben Hayun et al., CVPR 2026 (arXiv:2603.15026)"
+  license: "code/params undeclared (all-rights-reserved by default); DINOv3 backbone under the Meta DINOv3 License (gated)"
+  backbone: "DINOv3 ViT-L/16 (frozen) + whitened spatial/temporal Gaussian likelihood (training-free)"
+  weights:
+    - file: stall_params_vatex_dino_v3.npz
+      url: ""              # not mirrored: obtain from the STALL repo (github.com/OmerBenHayun/STALL); pass --weights <npz>
+      sha256: ""
+      size_mb: 17
+# STALL is training-free: the only artifact is the VATEX calibration npz above. The DINOv3
+# ViT-L/16 backbone is GATED (request access from Meta) and supplied via STALL(dinov3_dir=, dinov3_weights=).

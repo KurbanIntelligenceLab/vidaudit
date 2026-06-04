@@ -21,3 +21,6 @@ from . import probe           # noqa: F401,E402  (trainable readout; validates t
 from . import aigvdet         # noqa: F401,E402  (two-stream ResNet50; arXiv:2403.16638)
 from . import skyra           # noqa: F401,E402  (Qwen2.5-VL-7B MLLM; arXiv:2512.15693)
 from . import videoveritas    # noqa: F401,E402  (Qwen3-VL-8B MLLM, ModelScope; arXiv:2602.08828)
+from . import ivy             # noqa: F401,E402  (Qwen2.5-VL-3B MLLM, IVY-FAKE; arXiv:2506.00979)
+from . import stall           # noqa: F401,E402  (training-free DINOv3 likelihood; arXiv:2603.15026)
+from . import l3de            # noqa: F401,E402  (DINOv2-G + RAFT + UniDepth 3D-CNN; arXiv:2406.19568)

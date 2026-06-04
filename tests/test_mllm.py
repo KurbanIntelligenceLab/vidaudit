@@ -44,3 +44,14 @@ def test_videoveritas_registered_modelscope():
     assert d.spec.family == "mllm" and d.spec.license == "Apache-2.0"
     assert d.hub == "modelscope" and d.model_id == "EricTanh/VideoVeritas"
     assert d.has_native_head and d.has_features
+
+
+def test_ivy_registered_conclusion_tags():
+    from vidaudit.detectors.registry import all_detectors, get
+    import vidaudit.detectors  # noqa: F401
+    assert "ivy-xdetector" in all_detectors()
+    d = get("ivy-xdetector")    # lazy: no HuggingFace download
+    assert d.spec.family == "mllm" and d.hub == "hf"
+    assert d.model_id == "AI-Safeguard/Ivy-Fake"
+    assert d.answer_tags == ("<conclusion>", "</conclusion>")   # not the default <answer>
+    assert d.has_native_head and d.has_features

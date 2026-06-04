@@ -64,7 +64,7 @@ The primary cell is the **matched 27k-clip GenVidBench cell** under leave-one-ge
 ## What's inside
 - **Six-control audit protocol (P1-P6)**: canonical re-encode, clip-length leakage filter, real-vs-real dataset-identity floor, matched-harness re-training, multi-seed/bootstrap CIs, and a true cross-dataset cell.
 - **Audited leaderboard**: every detector labeled by the two verdicts above, with the full metric tuple (AUC, above-floor margin, TPR@FPR, calibration), not just AUC.
-- **Model zoo**: 11 detectors behind one plugin API: **TemporalSpec** (ours), **D3**, **ReStraV**, **CLIP**, **RAFT**, **FVMD**, **WaveRep**, **NSG-VD**, **AIGVDet**, **Skyra**, **VideoVeritas** (the last two MLLMs); backbones auto-download or load published checkpoints (sha256-verified via the zoo). Full table + setup below.
+- **Model zoo**: 14 detectors behind one plugin API: **TemporalSpec** (ours), **D3**, **ReStraV**, **CLIP**, **RAFT**, **FVMD**, **WaveRep**, **NSG-VD**, **AIGVDet**, **STALL**, **L3DE**, **Skyra**, **VideoVeritas**, **Ivy-xDetector** (the last three MLLMs); backbones auto-download or load published checkpoints (sha256-verified via the zoo). Full table + setup below.
 - **Standardized data package**: per-clip features, LOGO splits, provenance, and Croissant metadata, combining GenVidBench and AIGVDBench (bring-your-own-videos; we do not redistribute source clips).
 - **Unified CLI**: `run.py extract` (clips → features) → `run.py eval` (audit → verdicts) → `run.py leaderboard`, plus a uniform, overridable trainer driven by shell scripts.
 
@@ -164,7 +164,7 @@ class MyBench(VideoDataset):
 ```
 
 ## Model zoo and weights
-All eleven baselines are wrapped behind the plugin API and run from clips via `run.py extract`. Five are clone-and-run (auto-download backbones or codec features); four take published checkpoints, fetched via the zoo (`fetch_weights` → download + sha256-verify + cache) or passed with `--weights` (FVMD's tracker auto-fetches; WaveRep, NSG-VD, and AIGVDet need a checkpoint); and Skyra + VideoVeritas are 7-9B MLLMs that auto-download from HuggingFace and ModelScope.
+All fourteen baselines are wrapped behind the plugin API and run from clips via `run.py extract`. Five are clone-and-run (auto-download backbones or codec features); five take published checkpoints, fetched via the zoo (`fetch_weights` -> download + sha256-verify + cache) or passed with `--weights` (FVMD's tracker auto-fetches; WaveRep, NSG-VD, AIGVDet, and L3DE need a checkpoint); STALL is training-free but needs the gated DINOv3 backbone plus its released calibration file; and Skyra, VideoVeritas, and Ivy-xDetector are 3-9B MLLMs that auto-download from HuggingFace and ModelScope.
 
 | Detector | Family | Backbone | Setup |
 |---|---|---|---|
@@ -177,14 +177,19 @@ All eleven baselines are wrapped behind the plugin API and run from clips via `r
 | WaveRep | forensic | DINOv2 ViT-B/14 + wavelet aug | checkpoint (zoo / `--weights`) |
 | NSG-VD | forensic | ADM 256 diffusion + Swin discriminator | checkpoint + ~2GB ADM model |
 | AIGVDet | fusion | two-stream ResNet50 (RGB + RAFT flow) | checkpoint (`--weights`; academic-only) |
+| STALL | fusion | DINOv3 ViT-L/16 (frozen, training-free) | gated DINOv3 + released calibration npz (`--weights`) |
+| L3DE | fusion | DINOv2-G + RAFT + UniDepth-v2 -> 3D-CNN | checkpoint (`--weights`); non-commercial (CC-BY-NC) |
 | Skyra | mllm | Qwen2.5-VL-7B (SFT+RL) | HuggingFace auto-download (~16GB, GPU; soft verdict-token score) |
 | VideoVeritas | mllm | Qwen3-VL-8B | ModelScope auto-download (~18GB, GPU; `pip install modelscope`) |
+| Ivy-xDetector | mllm | Qwen2.5-VL-3B (IVY-FAKE) | HuggingFace auto-download (~7.5GB, GPU; `<conclusion>` verdict) |
 
 Vendored model code (PIPs++ for FVMD, the NSG-VD codebase) lives under `vidaudit/_vendor/`, kept separate from our thin wrappers and carrying its upstream license.
 
 AIGVDet was added from the literature-review sweep; its `original.pth` / `optical.pth` are on the authors' Google Drive (academic-only, not mirrored), so it joins the leaderboard once those weights are run on the cluster. Its spatial branch is exact; the optical branch uses torchvision RAFT + a standard flow visualization (the paper's `raft-things` can be swapped in for an exact match).
 
-Skyra is the first MLLM-family detector, wrapped via a reusable Qwen-VL adapter (`vidaudit/detectors/mllm.py`) whose `score()` returns a soft p(generated) from the verdict-token logits (not a hard label) and `features()` pools the VLM hidden state. Being a 7B model it auto-downloads from HuggingFace and joins the leaderboard after a cluster run. **VideoVeritas** (Qwen3-VL-8B) is wrapped as a second instance of the adapter, with its weights on ModelScope (`pip install modelscope` to fetch them); **Ivy-xDetector** (license undeclared) and **BusterX++** (gated + no inference code) remain deferred.
+Skyra is the first MLLM-family detector, wrapped via a reusable Qwen-VL adapter (`vidaudit/detectors/mllm.py`) whose `score()` returns a soft p(generated) from the verdict-token logits (not a hard label) and `features()` pools the VLM hidden state. Being a 7B model it auto-downloads from HuggingFace and joins the leaderboard after a cluster run. **VideoVeritas** (Qwen3-VL-8B) is a second instance of the adapter with its weights on ModelScope (`pip install modelscope`), and **Ivy-xDetector** (Qwen2.5-VL-3B, IVY-FAKE) is a third, fetched from HuggingFace and emitting a `<conclusion>real/fake</conclusion>` verdict. Only **BusterX++** (gated + no published inference code) remains deferred.
+
+**STALL** (training-free) and **L3DE** (heavy 3-cue fusion) were also added from the sweep. STALL embeds frames with a frozen DINOv3 ViT-L/16 and scores a clip by a whitened spatial/temporal Gaussian likelihood against a real-video calibration; its upstream repo carries no license, so the scoring math is reimplemented from the paper and the released VATEX calibration file plus the gated DINOv3 backbone are point-to-source. L3DE fuses DINOv2-ViT-G appearance, RAFT flow, and UniDepth-v2 depth in a small 3D-CNN; the UniDepth-v2 dependency makes it **non-commercial (CC-BY-NC-4.0)**, and its sigmoid is p(real), so `score()` returns `1 - sigmoid`. Both are GPU-heavy and join the leaderboard after a cluster run.
 
 **Weight downloads.** FVMD's point tracker auto-fetches from its public release; obtain the others from their original release (below) and pass with `--weights` (or `load_weights(path)`). `zoo/manifest.yaml` records a sha256 per checkpoint so it verifies on load.
 
@@ -244,7 +249,7 @@ OUT=runs/probe scripts/train/mlp-probe.sh features/train.csv \
 - [x] `run.py` CLI: `extract`, `eval --features`, `eval --scores`, `train`, `leaderboard`, `prepare-data`, `fetch-weights`
 - [x] Closed extract/train → eval loop: `audit_scores` audits a native or trained head's own scores (no readout) through the same LOGO + RvR + metric tuple + verdicts
 - [x] Detector wrappers for all 11 baselines (auto-download / checkpoint / MLLM tiers), each smoke-tested from clips
-- [x] Literature-review sweep added **AIGVDet**, **Skyra**, and **VideoVeritas** (MLLM family via a reusable Qwen-VL adapter); L3DE (heavy: DINOv2-G + UniDepth), STALL (no repo license + gated DINOv3), Ivy-xDetector (license undeclared), and BusterX++ (gated + no inference code) assessed and deferred
+- [x] Literature-review sweep added **AIGVDet**, **STALL**, **L3DE**, **Skyra**, **VideoVeritas**, and **Ivy-xDetector** (six new wrappers; STALL reimplements its unlicensed scoring math, L3DE is non-commercial via UniDepth-v2); only **BusterX++** (gated + no published inference code) remains deferred
 - [x] Weight-fetch zoo (`fetch_weights` + `zoo/manifest.yaml`, sha256-verified)
 - [x] Standardized data package: P1 canonical re-encode + P2 length filter + dataset adapters (GenVidBench, AIGVDBench) + `prepare-data` + Croissant emitter
 - [ ] Dataset adapters for more benchmarks + a hosted leaderboard view `[planned]`
@@ -261,7 +266,7 @@ _To be added after publication._
 ## License
 VidAudit's own code is **MIT** (see `LICENSE`). That covers only our first-party code: the audit engine, the plugin API, the data package, and the detector wrappers.
 
-Wrapped detectors, their backbones, and the benchmark datasets keep their original licenses, and several are non-commercial or academic-use only (for example, WaveRep and AIGVDet are non-commercial; adding the L3DE detector would pull in UniDepth-v2 under CC-BY-NC-4.0). VidAudit does not mirror or redistribute any third-party weights or data; you obtain each from its original source and are responsible for complying with its terms. The MIT grant does not extend to these components, so commercial use of a wrapped model or dataset may not be permitted even though VidAudit's own code is MIT. See each model-zoo and data-package entry for the specific license.
+Wrapped detectors, their backbones, and the benchmark datasets keep their original licenses, and several are non-commercial, research-only, or carry no declared license (for example, WaveRep and AIGVDet are non-commercial; L3DE pulls in UniDepth-v2 under CC-BY-NC-4.0; Ivy-xDetector's Qwen base is under the non-commercial Qwen Research License; STALL's upstream code carries no license and its DINOv3 backbone is gated). VidAudit does not mirror or redistribute any third-party weights or data; you obtain each from its original source and are responsible for complying with its terms. The MIT grant does not extend to these components, so commercial use of a wrapped model or dataset may not be permitted even though VidAudit's own code is MIT. See each model-zoo and data-package entry for the specific license.
 
 ## References
 
@@ -277,8 +282,11 @@ Every wrapped detector, its key backbone/components, the benchmarks, and methods
 - **CLIP** (appearance baseline). A. Radford et al. "Learning Transferable Visual Models From Natural Language Supervision." ICML 2021. [arXiv:2103.00020](https://arxiv.org/abs/2103.00020).
 - **RAFT** (optical-flow baseline). Z. Teed, J. Deng. "RAFT: Recurrent All-Pairs Field Transforms for Optical Flow." ECCV 2020. [arXiv:2003.12039](https://arxiv.org/abs/2003.12039).
 - **AIGVDet** (two-stream ResNet50: RGB + RAFT flow). J. Bai, M. Lin, G. Cao. "AI-Generated Video Detection via Spatio-Temporal Anomaly Learning." PRCV 2024. [arXiv:2403.16638](https://arxiv.org/abs/2403.16638).
+- **STALL** (training-free; frozen DINOv3 + whitened spatial/temporal likelihood). O. Ben Hayun, R. Betser, M. Y. Levi, L. Kassel, G. Gilboa. "Training-free Detection of Generated Videos via Spatial-Temporal Likelihoods." CVPR 2026. [arXiv:2603.15026](https://arxiv.org/abs/2603.15026).
+- **L3DE** (DINOv2-ViT-G + RAFT flow + UniDepth-v2 depth -> 3D-CNN; non-commercial via UniDepth-v2). Chang et al. ICCV 2025. [arXiv:2406.19568](https://arxiv.org/abs/2406.19568).
 - **Skyra** (Qwen2.5-VL-7B reasoning MLLM). CVPR 2026. [arXiv:2512.15693](https://arxiv.org/abs/2512.15693).
 - **VideoVeritas** (Qwen3-VL-8B reasoning MLLM). ICML 2026. [arXiv:2602.08828](https://arxiv.org/abs/2602.08828).
+- **Ivy-xDetector** (Qwen2.5-VL-3B; the IVY-FAKE explainable image/video AIGC detector). Pi3AI / AI-Safeguard. 2025. [arXiv:2506.00979](https://arxiv.org/abs/2506.00979).
 
 **Backbones & components**
 - **X-CLIP** (D3). B. Ni et al. "Expanding Language-Image Pretrained Models for General Video Recognition." ECCV 2022. [arXiv:2208.02816](https://arxiv.org/abs/2208.02816).
@@ -295,6 +303,7 @@ Every wrapped detector, its key backbone/components, the benchmarks, and methods
 - **DeMamba**. H. Chen et al. "DeMamba: AI-Generated Video Detection on Million-Scale GenVideo Benchmark." 2024. [arXiv:2405.19707](https://arxiv.org/abs/2405.19707).
 - **DeCoF**. L. Ma, Z. Yan, Q. Guo, Y. Liao, H. Yu, P. Zhou. "Detecting AI-Generated Video via Frame Consistency." 2024. [arXiv:2402.02085](https://arxiv.org/abs/2402.02085).
 - **VidGuard-R1**. K. Park et al. "VidGuard-R1: AI-Generated Video Detection and Explanation via Reasoning MLLMs and RL." 2025. [arXiv:2510.02282](https://arxiv.org/abs/2510.02282).
+- **BusterX++** (reasoning MLLM detector). Assessed in the literature sweep but deferred: gated HuggingFace weights and no published inference code.
 
 ---
 <sub>Keywords: AI-generated video detection, synthetic video detection, deepfake video detection, video forensics, generative video benchmark, detection leaderboard, evaluation toolkit, model zoo, GenVidBench, AIGVDBench, AIGC video, diffusion video detection.</sub>
