@@ -28,9 +28,11 @@ class VideoVeritas(MLLMDetector):
     )
     model_id = "EricTanh/VideoVeritas"
     hub = "modelscope"
-    system_prompt = ("You are an expert video analyst. Please think about the question as if you "
-                     "were a human pondering deeply. It's encouraged to include self-reflection or "
-                     "verification in the reasoning process. Then, give a final verdict within "
-                     "<answer> </answer> tags.")
+    # Verbatim eval prompt from EricTan7/VideoVeritas self_scripts/infer/infer_vllm.py
+    # (the curly apostrophe and the newline after the first sentence are in the source).
+    system_prompt = ("You are an expert video analyst.\n"
+                     "Please think about the question as if you were a human pondering deeply. "
+                     "It’s encouraged to include self-reflection or verification in the "
+                     "reasoning process. Then, give a final verdict within <answer> </answer> tags.")
     user_prompt = "Is this video real or fake?"
     answer_tags = ("<answer>", "</answer>")

@@ -12,8 +12,8 @@ the VLM hidden state. Heavy (~7.5 GB, GPU); a real-weights run belongs on the cl
 Licensing: the Ivy-Fake weights carry NO declared license on the HuggingFace repo, and the
 Qwen2.5-VL-3B base is under the Qwen Research License (non-commercial). Treat as
 non-commercial / research, obtain from the original source, and comply with those terms
-(see the License section of the README). The paper samples video at 1 fps; this wrapper
-samples a fixed number of frames uniformly (set `n_frames`), so pin it for a published run.
+(see the License section of the README). The paper samples video at 1 fps (max 6 frames per
+clip); the generic adapter samples a fixed number of frames uniformly (`n_frames`, default 16).
 """
 from __future__ import annotations
 
@@ -21,9 +21,12 @@ from vidaudit.detectors.base import DetectorSpec
 from vidaudit.detectors.mllm import MLLMDetector
 from vidaudit.detectors.registry import register
 
+# The canonical model-card system prompt uses em-dashes ("one word--real or fake--wrapped");
+# this project forbids em-dashes, so the same instruction is rendered with commas below. The
+# verdict tags + format (<conclusion>real/fake</conclusion>) are byte-identical to upstream.
 _SYS = ("You are an AI-generated content detector. Classify the media as real or fake. "
-        "Provide your reasoning inside <think> </think> tags, then end with exactly one "
-        "word, either real or fake, wrapped in <conclusion> </conclusion> tags.")
+        "Provide reasoning inside <think>...</think> tags. End with exactly one word, real "
+        "or fake, wrapped in <conclusion>...</conclusion>.")
 
 
 @register("ivy-xdetector")

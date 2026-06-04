@@ -20,12 +20,13 @@ inherits the NON-COMMERCIAL restriction; the model-zoo entry is tagged according
 are point-to-source: `L3DE.pth` is on the authors' Google Drive (not mirrored) and
 UniDepth-v2 auto-downloads from HuggingFace.
 
-Heavy (DINOv2-ViT-G + RAFT + UniDepth-v2 per clip) and untestable without the gated-free but
-large backbones, so a real run belongs on the cluster. As with AIGVDet, the flow branch uses
-torchvision RAFT (the paper uses raft-things), so the optical stream is an approximation;
-the Net architecture, loading, and polarity are exact. The 3D-CNN is unit-tested with random
-weights here; reproduction numbers are a cluster follow-up (clone the repo to diff the exact
-conv strides + the flow/depth normalization before a published run).
+Heavy (DINOv2-ViT-G + RAFT + UniDepth-v2 per clip), so a real run belongs on the cluster. The
+Net architecture, weight loading, score polarity, DINOv2 normalization (mean/std = 0.5), and
+the flow/depth encodings are verified against the upstream repo (`l3de_pipeline.py` + the
+`proxy/` extractors). The one deliberate approximation is the flow field itself: this wrapper
+computes it with torchvision RAFT (the paper uses raft-things), though the downstream [0,1] UV
+self-normalization the net consumes is matched exactly. The 3D-CNN is unit-tested with random
+weights here.
 """
 from __future__ import annotations
 
@@ -193,29 +194,41 @@ class L3DE(Detector):
         return vol.float().to(self._dev())
 
     def _motion(self, frames):
-        """RAFT flow between consecutive frames -> [1, 2, T, 288, 512] (approximate)."""
+        """RAFT flow -> the self-normalized [0,1] UV map L3DE consumes -> [1, 2, T, 288, 512].
+
+        Frames are resized to (288, 512) before RAFT, then each flow field is encoded exactly
+        as the repo's UV-PNG round-trip does: per-frame rad_max self-normalization to
+        u_n = clip(u/(2*(rad_max+1e-5)) + 0.5, 0, 1) (likewise v_n), which is what the /255
+        load recovers. Only the flow field itself is approximate (torchvision RAFT vs the
+        paper's raft-things); the [0,1] encoding the net sees is matched."""
         import torch
         import torch.nn.functional as F
         from torchvision.transforms.functional import to_tensor
         raft = self._ensure_raft()
-        H, W = _FLOW_HW
+        H, W = _FLOW_HW                                                   # 288, 512 (both /8)
         flows = []
         for a, b in zip(frames[:self.T], frames[1:self.T + 1]):
-            xa = (to_tensor(a) * 2 - 1).unsqueeze(0)
-            xb = (to_tensor(b) * 2 - 1).unsqueeze(0)
-            _, _, h, w = xa.shape
-            ph, pw = (8 - h % 8) % 8, (8 - w % 8) % 8
-            xa = F.pad(xa, (0, pw, 0, ph)).to(self._dev())
-            xb = F.pad(xb, (0, pw, 0, ph)).to(self._dev())
+            xa = F.interpolate(to_tensor(a).unsqueeze(0), size=(H, W), mode="bilinear", align_corners=False)
+            xb = F.interpolate(to_tensor(b).unsqueeze(0), size=(H, W), mode="bilinear", align_corners=False)
+            xa = (xa * 2 - 1).to(self._dev())
+            xb = (xb * 2 - 1).to(self._dev())
             with torch.no_grad():
-                fl = raft(xa, xb)[-1][0, :, :h, :w]                       # [2, h, w]
-            fl = F.interpolate(fl.unsqueeze(0), size=(H, W), mode="nearest")[0]
-            flows.append(fl)
+                fl = raft(xa, xb)[-1][0]                                  # [2, H, W] = (u, v)
+            u, v = fl[0], fl[1]
+            rad_max = torch.clamp(torch.sqrt(u * u + v * v).max(), min=1e-5)
+            u_n = torch.clamp(u / (2 * (rad_max + 1e-5)) + 0.5, 0.0, 1.0)
+            v_n = torch.clamp(v / (2 * (rad_max + 1e-5)) + 0.5, 0.0, 1.0)
+            flows.append(torch.stack([u_n, v_n], dim=0))                 # [2, H, W] in [0,1]
         vol = torch.stack(flows, dim=1).unsqueeze(0)                      # [1,2,T,H,W]
         return vol.float().to(self._dev())
 
     def _depth(self, frames):
-        """UniDepth-v2 metric depth -> [1, 1, T, 288, 512], clipped + min-max normalized."""
+        """UniDepth-v2 depth -> [1, 1, T, 288, 512].
+
+        Matches the repo's pipeline normalization order: resize each map to (288, 512), gather
+        the per-clip GLOBAL min/max BEFORE clipping, clip the stack to <=10000, then min-max to
+        [0,1] using those pre-clip global bounds (a constant-depth clip would otherwise diverge
+        if min/max were taken after the clip)."""
         import torch
         import torch.nn.functional as F
         from torchvision.transforms.functional import to_tensor
@@ -226,12 +239,12 @@ class L3DE(Detector):
             rgb = (to_tensor(im) * 255.0).to(self._dev())
             with torch.no_grad():
                 depth = model.infer(rgb)["depth"].squeeze()              # [h, w]
-            depth = F.interpolate(depth[None, None], size=(H, W), mode="nearest")[0, 0]
-            depth = torch.clamp(depth, max=10000.0)
-            lo, hi = depth.min(), depth.max()
-            depth = (depth - lo) / (hi - lo + 1e-8)
-            maps.append(depth)
-        vol = torch.stack(maps, dim=0).unsqueeze(0).unsqueeze(0)         # [1,1,T,H,W]
+            maps.append(F.interpolate(depth[None, None], size=(H, W), mode="nearest")[0, 0])
+        stack = torch.stack(maps, dim=0)                                 # [T, H, W] (pre-clip)
+        mn, mx = stack.min(), stack.max()                                # per-clip global, pre-clip
+        stack = torch.clamp(stack, max=10000.0)
+        stack = (stack - mn) / (mx - mn + 1e-8) if mx > mn else stack * 0.0
+        vol = stack.unsqueeze(0).unsqueeze(0)                            # [1,1,T,H,W]
         return vol.float().to(self._dev())
 
     def _forward(self, clip: Clip):
