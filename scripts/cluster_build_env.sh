@@ -45,4 +45,4 @@ print("torch", torch.__version__, "| torch.version.cuda", torch.version.cuda)
 assert torch.version.cuda is not None, "CPU build resolved -- check CUDA_OVERRIDE / CUDA_BUILD"
 print("OK: CUDA-compiled torch. cuda.is_available() will be True on a GPU node.")
 PY
-echo "=== DONE: env ready -> reproduce results with scripts/reproduce_leaderboard.sh ==="
+echo "=== DONE: env ready -> regenerate the leaderboard with scripts/run_all.sh ==="

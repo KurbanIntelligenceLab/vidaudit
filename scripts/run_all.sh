@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Reproduce the audited leaderboard for the wrapped detectors, end to end:
+# Regenerate the audited leaderboard for the wrapped detectors, end to end:
 #   prepare-data (preprocess)  ->  extract (per detector)  ->  eval (audit)  ->  leaderboard
 #
 # Usage:
-#   scripts/reproduce_leaderboard.sh <prepared_manifest.csv>
+#   scripts/run_all.sh <prepared_manifest.csv>
 # where <prepared_manifest.csv> is the output of
 #   python run.py prepare-data <dataset> --source <your download> --out <dir>
 #
@@ -11,12 +11,12 @@
 # your own sbatch). Checkpoints for the published-weight detectors are optional, via
 # env vars: WAVEREP_CKPT, NSGVD_CKPT, ADM_CKPT. Output dir via OUT (default: results/).
 #
-# This reproduces the uniform matched-harness readout (features -> median-impute ->
+# This regenerates the uniform matched-harness readout (features -> median-impute ->
 # z-score -> L2-LR, LOGO + RvR) for every detector, which is the audit's apples-to-apples
 # comparison. The leaderboard's native-head rows (e.g. D3, WaveRep) additionally use the
 # `extract --kind score` -> `eval --scores` path shown in the README tutorial.
 set -euo pipefail
-MANIFEST="${1:?usage: reproduce_leaderboard.sh <prepared_manifest.csv> (from run.py prepare-data)}"
+MANIFEST="${1:?usage: run_all.sh <prepared_manifest.csv> (from run.py prepare-data)}"
 cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT="${OUT:-results}"; FEAT="$OUT/features"; mkdir -p "$FEAT"
 
