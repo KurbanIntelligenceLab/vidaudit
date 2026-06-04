@@ -17,8 +17,6 @@ Matched 27k-clip GenVidBench cell, leave-one-generator-out (LOGO). Sorted by LOG
 | 9 | **TemporalSpec** (ours) | 0.832 | 0.643 | +0.189 | 0.024 | ⚠️ Certified, collapses @0.1% |
 | 10 | **NSG-VD** | 0.660 | 0.596 | +0.064 | — | ❌ Near-floor (rides identity) |
 
-> **Existence proof.** A trivial clip-length probe (clip length / non-I-frame count (3-d)) scores **0.998** AUC unaudited: 0.998 unaudited, falls to 0.529 under the P2 K-frame filter. That gap is why the audit exists.
-
 **Verdict key.** ✅ Certified = clears its real-vs-real floor by a wide margin. ✅ usable = also keeps recall at FPR 0.1%. ⚠️ collapses @0.1% = strong AUC, near-zero deployable recall. ❌ Caught = high RvR, the score rides dataset identity. ❌ Near-floor = barely exceeds the floor. 🚩 Leakage = relies on a confound the audit removes.
 
 **Columns.** LOGO-OOD: leave-one-generator-out AUC. RvR: real-vs-real floor (an artifact detector sits near 0.5; high means dataset-identity leakage). Margin: LOGO-OOD minus RvR. TPR@0.1%: recall at a 0.1% false-positive operating point.
@@ -35,4 +33,4 @@ Matched 27k-clip GenVidBench cell, leave-one-generator-out (LOGO). Sorted by LOG
 - **DeMamba** (Mamba SSM): pretrained weights withheld (GitHub issues #5/#16/#21); cannot re-score.
 
 ---
-<sub>Numbers from the WACV 2027 audit. Native head or uniform L2-LR readout per method (see `readout` in `leaderboard.csv`). Bootstrap CIs, the full 116k cell, and the combined GenVidBench + AIGVDBench cell are reported in the paper and will land here as the data package ships.</sub>
+<sub>Native head or uniform L2-LR readout per method (see `readout` in `leaderboard.csv`). Bootstrap CIs, the full 116k cell, and the combined GenVidBench + AIGVDBench cross-dataset cell land here as the data package ships.</sub>

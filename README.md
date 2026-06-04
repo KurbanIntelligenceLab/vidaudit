@@ -9,9 +9,6 @@
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-green.svg"></a>
   <img alt="Python" src="https://img.shields.io/badge/python-3.14-blue.svg">
   <img alt="Audit protocol" src="https://img.shields.io/badge/audit-P1--P6-8A2BE2.svg">
-  <a href="#"><img alt="HuggingFace dataset" src="https://img.shields.io/badge/%F0%9F%A4%97%20dataset-coming-lightgrey.svg"></a>
-  <a href="#"><img alt="Leaderboard Space" src="https://img.shields.io/badge/%F0%9F%A4%97%20leaderboard-coming-lightgrey.svg"></a>
-  <a href="#"><img alt="arXiv" src="https://img.shields.io/badge/arXiv-coming-b31b1b.svg"></a>
 </p>
 
 VidAudit is a standardized, **audited** evaluation suite for **AI-generated, synthetic, and deepfake video detection**. It exists because every AI-video-detection paper currently evaluates differently, a 20-paper survey shows none apply all six standard controls, and high leaderboard AUCs do not predict deployable recall. VidAudit makes the audited protocol the default and makes fair, reproducible comparison (and honest re-ranking by deployability) a single command.
@@ -20,22 +17,20 @@ VidAudit is a standardized, **audited** evaluation suite for **AI-generated, syn
 
 ## 🏆 Audited leaderboard
 
-Every detector is scored on the **matched 27k-clip GenVidBench cell** under leave-one-generator-out (LOGO) evaluation. The headline number papers report is **LOGO-OOD AUC**. The audit adds three columns that decide whether that number is real: the **real-vs-real floor** (`RvR`), the **above-floor margin**, and **deployable recall** (`TPR@0.1%`). Sorted by OOD AUC, so you can watch high-AUC methods separate from genuinely robust ones.
+The primary cell is the **matched 27k-clip GenVidBench cell** under leave-one-generator-out (LOGO) evaluation. The headline number papers report is **LOGO-OOD AUC**; the audit adds the columns that decide whether it is real: the **real-vs-real floor** (`RvR`), the **above-floor margin**, and **deployable recall** (`TPR@0.1%`). Sorted by OOD AUC, so high-AUC methods visibly separate from genuinely robust ones.
 
 | # | Model | LOGO-OOD AUC ↑ | RvR floor | Margin ↑ | TPR@0.1% ↑ | Verdict |
 |--:|---|:--:|:--:|:--:|:--:|---|
 | 1 | **WaveRep** | 0.996 | 0.534 | +0.462 | **0.816** | ✅ Certified, usable |
-| 2 | **XSFF** (ours) | 0.946 | 0.604 | +0.342 | _pending_ | ✅ Certified |
+| 2 | **XSFF** (ours) | 0.946 | 0.604 | +0.342 | — | ✅ Certified |
 | 3 | **ReStraV** | 0.931 | 0.586 | +0.345 | 0.634 | ✅ Certified, usable |
-| 4 | **D3** | 0.887 | 0.421 | +0.466 | _pending_ | ✅ Certified (native head) |
+| 4 | **D3** | 0.887 | 0.421 | +0.466 | — | ✅ Certified (native head) |
 | 5 | **FVMD** | 0.880 | 0.574 | +0.306 | 0.027 | ⚠️ Certified, collapses @0.1% |
-| 6 | **TemporalSpec+aug** (ours) | 0.871 | 0.634 | +0.237 | _pending_ | ✅ Certified |
+| 6 | **TemporalSpec+aug** (ours) | 0.871 | 0.634 | +0.237 | — | ✅ Certified |
 | 7 | **RAFT** | 0.855 | 0.627 | +0.228 | 0.020 | ⚠️ Certified, collapses @0.1% |
 | 8 | **CLIP** | 0.852 | 0.766 | +0.086 | 0.238 | ❌ Caught (dataset identity) |
 | 9 | **TemporalSpec** (ours) | 0.832 | 0.643 | +0.189 | 0.024 | ⚠️ Certified, collapses @0.1% |
-| 10 | **NSG-VD** | 0.660 | 0.596 | +0.064 | _pending_ | ❌ Near-floor (rides identity) |
-
-> **Existence proof.** A trivial 3-feature **clip-length probe** scores **0.998** AUC under an unaudited protocol and **0.529** after the P2 leakage filter. That gap is why the audit exists: a near-perfect leaderboard score can be almost entirely confound. See the paper for the full derivation.
+| 10 | **NSG-VD** | 0.660 | 0.596 | +0.064 | — | ❌ Near-floor (rides identity) |
 
 **How to read the verdict.**
 - ✅ **Certified**: clears its real-vs-real floor by a wide margin, genuine cross-generator signal.
@@ -46,11 +41,15 @@ Every detector is scored on the **matched 27k-clip GenVidBench cell** under leav
 
 **Column definitions.**
 - **LOGO-OOD AUC**: leave-one-generator-out AUC on held-out generators.
-- **RvR floor**: real-vs-real AUC (separating two *real* datasets). An artifact-based detector should sit near 0.5 here; a high value means dataset-identity leakage.
+- **RvR floor**: real-vs-real AUC (separating two *real* datasets). An artifact-based detector should sit near 0.5; a high value means dataset-identity leakage.
 - **Margin**: LOGO-OOD minus RvR, the real generalization remaining above the floor.
 - **TPR@0.1%**: true-positive rate at a 0.1% false-positive operating point (deployable recall).
 
-<sub>Numbers from the WACV 2027 audit (matched 27k GenVidBench cell, native head or uniform L2-LR readout per method). Bootstrap CIs, the full 116k cell, and the combined GenVidBench + AIGVDBench cross-dataset cell are reported in the paper and will land here as the data package ships. `_pending_` operating points are computed but not yet folded into this table.</sub>
+**Other cells** (also in `leaderboard.csv` / `LEADERBOARD.md`).
+- **AIGVDBench** (`aigvd-2284`): D3 scores **0.771** LOGO-OOD (native head). Only one real source, so the RvR floor does not apply; the current run used XCLIP-B/32 and a B/16 re-run is pending. Broader AIGVDBench coverage lands as those features ship.
+- **GenVidBench full-116k** (unmatched): TemporalSpec **0.819**, for reference against the matched cell.
+
+<sub>GenVidBench matched-27k cell; native head or uniform L2-LR readout per method. A `—` in TPR@0.1% marks an operating point not yet in the released `leaderboard.csv`. The full 116k cell, bootstrap CIs, and the combined GenVidBench + AIGVDBench cross-dataset cell land here as the data package ships.</sub>
 
 ---
 
@@ -191,7 +190,7 @@ We **cannot redistribute** the GenVidBench / AIGVDBench source videos (copyright
 python run.py fetch-data --manifest provenance.csv --sources ~/genvidbench --out data/gvb --min-frames 16
 python run.py extract temporalspec --manifest data/gvb/manifest.csv --out features/ts.csv
 ```
-- 🤗 **HuggingFace dataset / leaderboard Space**: _(coming)_
+**What gets released.** Not the videos — only the *derived* artifacts, which are redistributable: the per-clip **feature tables**, the **LOGO/RvR splits**, the **provenance labels**, the **canonical recipe**, and the **model-weight mirror**. These are a few GB (too large for git), so they will be published to a public mirror (host TBD); you reconstruct the clips themselves locally with `fetch-data`.
 
 ## Training
 Training is a first-class, standardized subsystem, not an optional hook. The trainer learns a classifier head over a precomputed feature table (the `extract` output), so it reuses the extract pipeline and never re-decodes video in the loop; preprocessing (median-impute → z-score) matches the audit and is persisted in the checkpoint. Defaults live in `scripts/train/<model>.sh`; loss / optimizer / scheduler / head are name-addressable registries you extend with a one-line decorator, and every knob is overridable on the command line (repeatable `--set key=value`, later wins; unknown keys route to `cfg.extra`):
@@ -215,8 +214,7 @@ OUT=runs/probe scripts/train/mlp-probe.sh features/train.csv \
 - [x] Detector wrappers for all 8 baselines (auto-download tier + checkpoint tier), each smoke-tested from clips
 - [x] Weight-fetch zoo (`fetch_weights` + `zoo/manifest.yaml`, sha256-verified)
 - [x] Standardized data package: P1 canonical re-encode + P2 length filter + local reconstruct (`fetch-data`) + Croissant emitter
-- [ ] Public weight mirror (host the cluster checkpoints over HTTP) `[planned]`
-- [ ] HuggingFace dataset + leaderboard Space `[planned]`
+- [ ] Public release: feature tables + weight mirror + a hosted leaderboard (host TBD) `[planned]`
 - [x] Standardized trainer (`TrainConfig` + registries + uniform loop), validated end-to-end on `MLP-Probe`
 - [x] First per-detector recipe: ReStraV trainable head over the standard trainer (`scripts/train/restrav.sh`)
 - [ ] WaveRep / NSG-VD trainable heads `[next]`
@@ -225,14 +223,7 @@ OUT=runs/probe scripts/train/mlp-probe.sh features/train.csv \
 See `FRAMEWORK.md` for the full design, the plugin contract, and the build phases.
 
 ## Citation
-```bibtex
-@inproceedings{vidaudit,
-  title  = {How Inflated Are AI-Generated Video Detection Benchmarks?},
-  author = {Anonymous},
-  year   = {2027},
-  note   = {VidAudit toolkit and audited leaderboard}
-}
-```
+_To be added after publication._
 
 ## License
 MIT (see `LICENSE`). Wrapped detectors and datasets retain their original licenses; see each entry in the model zoo and data package.

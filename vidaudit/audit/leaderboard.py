@@ -88,7 +88,6 @@ def render(rows) -> str:
     L.append("")
 
     main = [r for r in rows if r["benchmark"] == "GenVidBench" and r["cell"] == "matched-27k"]
-    leak = [r for r in main if r["status"] == "leakage"]
     board = [r for r in main if r["status"] == ""]
     board.sort(key=lambda r: (r["logo_ood"] is None, -(r["logo_ood"] or 0.0)))
 
@@ -99,12 +98,6 @@ def render(rows) -> str:
         L.append(f"| {i} | {_name(r)} | {_n(r['logo_ood'])} | {_n(r['rvr'])} | "
                  f"{(f'{m:+.3f}') if m is not None else '—'} | {_n(r['tpr01'])} | {_verdict_text(fv, dt)} |")
     L.append("")
-
-    for r in leak:
-        L.append(f"> **Existence proof.** A trivial {r['model']} ({r['backbone']}) scores "
-                 f"**{_n(r['logo_ood'])}** AUC unaudited: {r['notes']}. That gap is why the audit exists.")
-    if leak:
-        L.append("")
 
     L.append("**Verdict key.** "
              "✅ Certified = clears its real-vs-real floor by a wide margin. "
@@ -142,10 +135,9 @@ def render(rows) -> str:
         L.append("")
 
     L.append("---")
-    L.append("<sub>Numbers from the WACV 2027 audit. Native head or uniform L2-LR readout per method "
-             "(see `readout` in `leaderboard.csv`). Bootstrap CIs, the full 116k cell, and the combined "
-             "GenVidBench + AIGVDBench cell are reported in the paper and will land here as the data "
-             "package ships.</sub>")
+    L.append("<sub>Native head or uniform L2-LR readout per method (see `readout` in "
+             "`leaderboard.csv`). Bootstrap CIs, the full 116k cell, and the combined "
+             "GenVidBench + AIGVDBench cross-dataset cell land here as the data package ships.</sub>")
     return "\n".join(L) + "\n"
 
 
