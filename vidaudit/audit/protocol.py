@@ -69,6 +69,11 @@ def _num(frame: pd.DataFrame, feats: Sequence[str]) -> pd.DataFrame:
 def run_logo(df: pd.DataFrame, feats: Sequence[str], **opts) -> Dict:
     """Per-generator ID and OOD AUC + the OOD test predictions for the metric suite."""
     real = df[df["is_real"] == 1].reset_index(drop=True)
+    # Canonical audited split: non-stratified ShuffleSplit at SEED (matches the cluster
+    # run_audited_metrics harness). NB: passing stratify=<constant> would route through
+    # StratifiedShuffleSplit and pick a *disjoint* seed-SEED partition (the source of the
+    # FVMD 0.894-vs-0.880 difference vs evaluate_features); that gap is split noise,
+    # bounded by the bootstrap CI, not a methodology change. Keep this non-stratified.
     real_tr, real_te = train_test_split(real, test_size=0.2, random_state=SEED)
     gens = sorted(df.loc[df["is_real"] == 0, "generator"].astype(str).unique().tolist())
     gs = {g: train_test_split(df[df["generator"].astype(str) == g].reset_index(drop=True),
