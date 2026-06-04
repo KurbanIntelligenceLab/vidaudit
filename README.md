@@ -251,5 +251,35 @@ _To be added after publication._
 ## License
 MIT (see `LICENSE`). Wrapped detectors and datasets retain their original licenses; see each entry in the model zoo and data package.
 
+## References
+
+Every wrapped detector, its key backbone/components, the benchmarks, and methods we could not include yet — with their original papers.
+
+**Detectors (model zoo)**
+- **TemporalSpec** (ours; codec motion vectors) — VidAudit / WACV 2027. _Citation to be added after publication._
+- **D3** (X-CLIP backbone; training-free) — C. Zheng, R. Suo, C. Lin, Z. Zhao, L. Yang, S. Liu, M. Yang, C. Wang, C. Shen. "D³: Training-Free AI-Generated Video Detection Using Second-Order Features." ICCV 2025. [arXiv:2508.00701](https://arxiv.org/abs/2508.00701).
+- **ReStraV** (DINOv2 backbone) — C. Internò et al. "AI-Generated Video Detection via Perceptual Straightening." NeurIPS 2025. [arXiv:2507.00583](https://arxiv.org/abs/2507.00583).
+- **WaveRep** (DINOv2 + forensic augmentation) — R. Corvi, D. Cozzolino, E. Prashnani, S. De Mello, K. Nagano, L. Verdoliva. "Seeing What Matters: Generalizable AI-Generated Video Detection with Forensic-Oriented Augmentation." NeurIPS 2025. [arXiv:2506.16802](https://arxiv.org/abs/2506.16802).
+- **NSG-VD** (ADM diffusion + Swin discriminator) — S. Zhang, Z. Lian, J. Yang, D. Li, G. Pang, et al. "Physics-Driven Spatiotemporal Modeling for AI-Generated Video Detection." NeurIPS 2025. [arXiv:2510.08073](https://arxiv.org/abs/2510.08073).
+- **FVMD** (PIPs++ point tracker) — J. Liu, Y. Qu, Q. Yan, X. Zeng, L. Wang, R. Liao. "Fréchet Video Motion Distance: A Metric for Evaluating Motion Consistency in Videos." 2024. [arXiv:2407.16124](https://arxiv.org/abs/2407.16124).
+- **CLIP** (appearance baseline) — A. Radford et al. "Learning Transferable Visual Models From Natural Language Supervision." ICML 2021. [arXiv:2103.00020](https://arxiv.org/abs/2103.00020).
+- **RAFT** (optical-flow baseline) — Z. Teed, J. Deng. "RAFT: Recurrent All-Pairs Field Transforms for Optical Flow." ECCV 2020. [arXiv:2003.12039](https://arxiv.org/abs/2003.12039).
+
+**Backbones & components**
+- **X-CLIP** (D3) — B. Ni et al. "Expanding Language-Image Pretrained Models for General Video Recognition." ECCV 2022. [arXiv:2208.02816](https://arxiv.org/abs/2208.02816).
+- **DINOv2** (ReStraV, WaveRep) — M. Oquab et al. "DINOv2: Learning Robust Visual Features without Supervision." TMLR 2024. [arXiv:2304.07193](https://arxiv.org/abs/2304.07193).
+- **Swin Transformer** (NSG-VD discriminator) — Z. Liu et al. "Swin Transformer: Hierarchical Vision Transformer using Shifted Windows." ICCV 2021. [arXiv:2103.14030](https://arxiv.org/abs/2103.14030).
+- **ADM / guided diffusion** (NSG-VD score function) — P. Dhariwal, A. Nichol. "Diffusion Models Beat GANs on Image Synthesis." NeurIPS 2021. [arXiv:2105.05233](https://arxiv.org/abs/2105.05233).
+- **PIPs++ / PointOdyssey** (FVMD tracker) — Y. Zheng, A. W. Harley, B. Shen, G. Wetzstein, L. J. Guibas. "PointOdyssey: A Large-Scale Synthetic Dataset for Long-Term Point Tracking." ICCV 2023. [arXiv:2307.15055](https://arxiv.org/abs/2307.15055).
+
+**Benchmarks**
+- **GenVidBench** — Z. Ni et al. "GenVidBench: A 6-Million Benchmark for AI-Generated Video Detection." AAAI 2026. [arXiv:2501.11340](https://arxiv.org/abs/2501.11340).
+- **AIGVDBench** — L. Ma, Z. Xue, Y. Wang, Z. Yan, J. Xu, X. Jiang, H. Yu, Y. Liao, Z. Bi. "Your One-Stop Solution for AI-Generated Video Detection." 2026. [arXiv:2601.11035](https://arxiv.org/abs/2601.11035).
+
+**Other detectors (no public weights — not yet in the zoo)**
+- **DeMamba** — H. Chen et al. "DeMamba: AI-Generated Video Detection on Million-Scale GenVideo Benchmark." 2024. [arXiv:2405.19707](https://arxiv.org/abs/2405.19707).
+- **DeCoF** — L. Ma, Z. Yan, Q. Guo, Y. Liao, H. Yu, P. Zhou. "Detecting AI-Generated Video via Frame Consistency." 2024. [arXiv:2402.02085](https://arxiv.org/abs/2402.02085).
+- **VidGuard-R1** — K. Park et al. "VidGuard-R1: AI-Generated Video Detection and Explanation via Reasoning MLLMs and RL." 2025. [arXiv:2510.02282](https://arxiv.org/abs/2510.02282).
+
 ---
 <sub>Keywords: AI-generated video detection, synthetic video detection, deepfake video detection, video forensics, generative video benchmark, detection leaderboard, evaluation toolkit, model zoo, GenVidBench, AIGVDBench, AIGC video, diffusion video detection.</sub>
