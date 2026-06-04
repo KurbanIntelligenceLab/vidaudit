@@ -11,11 +11,11 @@ Matched 27k-clip GenVidBench cell, leave-one-generator-out (LOGO). Sorted by LOG
 | 3 | **ReStraV** | 0.931 | 0.586 | +0.345 | 0.634 | ✅ Certified, usable |
 | 4 | **D3** | 0.887 | 0.421 | +0.466 | — | ✅ Certified |
 | 5 | **FVMD** | 0.880 | 0.574 | +0.306 | 0.027 | ⚠️ Certified, collapses @0.1% |
-| 6 | **TemporalSpec+aug** (ours) | 0.871 | 0.634 | +0.237 | — | ✅ Certified |
+| 6 | **TemporalSpec+aug** (ours) | 0.871 | 0.634 | +0.237 | 0.144 | ✅ Certified, marginal recall |
 | 7 | **RAFT** | 0.855 | 0.627 | +0.228 | 0.020 | ⚠️ Certified, collapses @0.1% |
 | 8 | **CLIP** | 0.852 | 0.766 | +0.086 | 0.238 | ❌ Caught (dataset identity) |
 | 9 | **TemporalSpec** (ours) | 0.832 | 0.643 | +0.189 | 0.024 | ⚠️ Certified, collapses @0.1% |
-| 10 | **NSG-VD** | 0.660 | 0.596 | +0.064 | — | ❌ Near-floor (rides identity) |
+| 10 | **NSG-VD** | 0.660 | 0.596 | +0.064 | 0.015 | ❌ Near-floor (rides identity) |
 
 **Verdict key.** ✅ Certified = clears its real-vs-real floor by a wide margin. ✅ usable = also keeps recall at FPR 0.1%. ⚠️ collapses @0.1% = strong AUC, near-zero deployable recall. ❌ Caught = high RvR, the score rides dataset identity. ❌ Near-floor = barely exceeds the floor. 🚩 Leakage = relies on a confound the audit removes.
 

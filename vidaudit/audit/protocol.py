@@ -51,6 +51,12 @@ def build_readout(n_features: int, *, reducer: str = "none", n_components: int =
                                            random_state=SEED, n_jobs=-1, tree_method="hist")))
         return Pipeline(steps)
 
+    if classifier == "lightgbm":
+        from lightgbm import LGBMClassifier
+        steps.append(("clf", LGBMClassifier(n_estimators=100, max_depth=5, learning_rate=0.1,
+                                            random_state=SEED, n_jobs=-1, verbose=-1)))
+        return Pipeline(steps)
+
     steps.append(("clf", LogisticRegression(max_iter=2000, C=1.0, class_weight="balanced",
                                             solver=solver, random_state=SEED)))
     pipe = Pipeline(steps)

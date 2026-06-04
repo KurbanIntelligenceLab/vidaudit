@@ -36,7 +36,7 @@ def main(argv=None) -> int:
                     help="explicit cols / 'auto:prefix=v,a'; default = all numeric except metadata")
     ev.add_argument("--reducer", default="none", choices=["none", "pca", "topk_l2"])
     ev.add_argument("--n-components", type=int, default=13)
-    ev.add_argument("--classifier", default="lr", choices=["lr", "xgboost"])
+    ev.add_argument("--classifier", default="lr", choices=["lr", "xgboost", "lightgbm"])
     ev.add_argument("--inner-cv", action="store_true", help="5-fold inner CV over C (LR only)")
     ev.add_argument("--arrow", action="store_true", help="read the CSV with the pandas pyarrow backend (faster on wide tables)")
 
