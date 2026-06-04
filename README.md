@@ -259,7 +259,9 @@ See `FRAMEWORK.md` for the full design, the plugin contract, and the build phase
 _To be added after publication._
 
 ## License
-MIT (see `LICENSE`). Wrapped detectors and datasets retain their original licenses; see each entry in the model zoo and data package.
+VidAudit's own code is **MIT** (see `LICENSE`). That covers only our first-party code: the audit engine, the plugin API, the data package, and the detector wrappers.
+
+Wrapped detectors, their backbones, and the benchmark datasets keep their original licenses, and several are non-commercial or academic-use only (for example, WaveRep and AIGVDet are non-commercial; adding the L3DE detector would pull in UniDepth-v2 under CC-BY-NC-4.0). VidAudit does not mirror or redistribute any third-party weights or data; you obtain each from its original source and are responsible for complying with its terms. The MIT grant does not extend to these components, so commercial use of a wrapped model or dataset may not be permitted even though VidAudit's own code is MIT. See each model-zoo and data-package entry for the specific license.
 
 ## References
 
