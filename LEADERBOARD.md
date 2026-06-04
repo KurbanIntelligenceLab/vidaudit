@@ -7,9 +7,9 @@ Matched 27k-clip GenVidBench cell, leave-one-generator-out (LOGO). Sorted by LOG
 | # | Model | LOGO-OOD AUC ↑ | RvR floor | Margin ↑ | TPR@0.1% ↑ | Verdict |
 |--:|---|:--:|:--:|:--:|:--:|---|
 | 1 | **WaveRep** | 0.996 | 0.534 | +0.462 | 0.816 | ✅ Certified, usable |
-| 2 | **XSFF** (ours) | 0.946 | 0.604 | +0.342 | — | ✅ Certified |
+| 2 | **XSFF** (ours) | 0.946 | 0.604 | +0.342 | n/a | ✅ Certified |
 | 3 | **ReStraV** | 0.931 | 0.586 | +0.345 | 0.634 | ✅ Certified, usable |
-| 4 | **D3** | 0.887 | 0.421 | +0.466 | — | ✅ Certified |
+| 4 | **D3** | 0.887 | 0.421 | +0.466 | n/a | ✅ Certified |
 | 5 | **FVMD** | 0.880 | 0.574 | +0.306 | 0.027 | ⚠️ Certified, collapses @0.1% |
 | 6 | **TemporalSpec+aug** (ours) | 0.871 | 0.634 | +0.237 | 0.144 | ✅ Certified, marginal recall |
 | 7 | **RAFT** | 0.855 | 0.627 | +0.228 | 0.020 | ⚠️ Certified, collapses @0.1% |
@@ -26,7 +26,7 @@ Matched 27k-clip GenVidBench cell, leave-one-generator-out (LOGO). Sorted by LOG
 | Model | Benchmark | Cell | LOGO-OOD | RvR | Margin | Notes |
 |---|---|---|:--:|:--:|:--:|---|
 | **TemporalSpec** (ours) | GenVidBench | full-116k | 0.819 | 0.628 | +0.191 | full unmatched cell |
-| **D3** | AIGVDBench | aigvd-2284 | 0.771 | — | — | 2025 generators (Wan2.1 0.659); RvR n/a (one real source); run used B/32, re-run at B/16 |
+| **D3** | AIGVDBench | aigvd-2284 | 0.771 | n/a | n/a | 2025 generators (Wan2.1 0.659); RvR n/a (one real source); run used B/32, re-run at B/16 |
 
 ## Excluded
 

@@ -66,12 +66,12 @@ def _verdict_text(fv: str, dt: str) -> str:
         "weak": "⚠️ Above floor (weak)",
         "leakage": "🚩 Leakage (existence proof)",
         "excluded": "Excluded (no public weights)",
-        "": "—",
-    }.get(fv, fv or "—")
+        "": "n/a",
+    }.get(fv, fv or "n/a")
 
 
 def _n(x, nd: int = 3) -> str:
-    return "—" if x is None else f"{x:.{nd}f}"
+    return "n/a" if x is None else f"{x:.{nd}f}"
 
 
 def _name(r) -> str:
@@ -96,7 +96,7 @@ def render(rows) -> str:
     for i, r in enumerate(board, 1):
         fv, dt, m = classify(r)
         L.append(f"| {i} | {_name(r)} | {_n(r['logo_ood'])} | {_n(r['rvr'])} | "
-                 f"{(f'{m:+.3f}') if m is not None else '—'} | {_n(r['tpr01'])} | {_verdict_text(fv, dt)} |")
+                 f"{(f'{m:+.3f}') if m is not None else 'n/a'} | {_n(r['tpr01'])} | {_verdict_text(fv, dt)} |")
     L.append("")
 
     L.append("**Verdict key.** "
@@ -122,7 +122,7 @@ def render(rows) -> str:
         for r in other:
             _, _, m = classify(r)
             L.append(f"| {_name(r)} | {r['benchmark']} | {r['cell']} | {_n(r['logo_ood'])} | "
-                     f"{_n(r['rvr'])} | {(f'{m:+.3f}') if m is not None else '—'} | {r.get('notes', '')} |")
+                     f"{_n(r['rvr'])} | {(f'{m:+.3f}') if m is not None else 'n/a'} | {r.get('notes', '')} |")
         L.append("")
 
     # excluded

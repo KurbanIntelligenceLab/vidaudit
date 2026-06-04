@@ -52,7 +52,7 @@ class TrainConfig:
     seed=42; device="auto"; extra={}    # unknown --set keys land in extra
 ```
 
-Registries: `@register_loss` (`bce`, `focal`), `@register_optimizer` (`adamw`, `adam`, `sgd`), `@register_scheduler` (`cosine`, `step`, `none`), `@register_head` (`linear`, `mlp`). The standard `SupervisedTrainer(detector, cfg)` (`vidaudit/train/trainer.py`) owns the loop — seeding, AMP, grad-clip, per-epoch validation AUC, best-checkpoint selection — and calls `detector.build_model(cfg)`; a method needing a bespoke loop overrides `Detector.train()`. The trainer learns a head over a **precomputed feature table** (the same CSV the audit consumes), so it reuses the extract pipeline and never re-decodes video in the loop; preprocessing (median-impute → z-score) matches the audit and is persisted in the checkpoint. Label is generated-positive (`y = 1 - is_real`).
+Registries: `@register_loss` (`bce`, `focal`), `@register_optimizer` (`adamw`, `adam`, `sgd`), `@register_scheduler` (`cosine`, `step`, `none`), `@register_head` (`linear`, `mlp`). The standard `SupervisedTrainer(detector, cfg)` (`vidaudit/train/trainer.py`) owns the loop (seeding, AMP, grad-clip, per-epoch validation AUC, best-checkpoint selection) and calls `detector.build_model(cfg)`; a method needing a bespoke loop overrides `Detector.train()`. The trainer learns a head over a **precomputed feature table** (the same CSV the audit consumes), so it reuses the extract pipeline and never re-decodes video in the loop; preprocessing (median-impute → z-score) matches the audit and is persisted in the checkpoint. Label is generated-positive (`y = 1 - is_real`).
 
 **Shell scripts hold the defaults; the command line holds the freedom.**
 ```bash
@@ -64,7 +64,7 @@ scripts/train/mlp-probe.sh features/train.csv            # documented defaults l
 OUT=runs/probe scripts/train/mlp-probe.sh features/train.csv \
   --set loss=focal --set focal_gamma=1.5 --set lr=3e-4 --set head=linear --set epochs=100
 ```
-Precedence: detector `default_train_config()` < the recipe script's `--set` flags < user `--set` flags. The checkpoint (`<out>/model.pt`) carries the state dict + config + feature columns + preprocessing stats + best val AUC; `<out>/metrics.json` holds the per-epoch history. The **official** numbers come from the audit (`run.py eval`) — the trainer's val AUC only selects the checkpoint.
+Precedence: detector `default_train_config()` < the recipe script's `--set` flags < user `--set` flags. The checkpoint (`<out>/model.pt`) carries the state dict + config + feature columns + preprocessing stats + best val AUC; `<out>/metrics.json` holds the per-epoch history. The **official** numbers come from the audit (`run.py eval`); the trainer's val AUC only selects the checkpoint.
 
 `MLP-Probe` (the standardized trainable readout, the trainable counterpart to the audit's fixed L2-LR) ships as the reference that validates this subsystem end-to-end. A paper-specific trainable detector (a ReStraV MLP head over DINOv2 features, the NSG-VD discriminator) plugs in identically: implement `build_model(cfg)` + `default_train_config()` and the same trainer drives it.
 

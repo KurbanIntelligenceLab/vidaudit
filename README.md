@@ -23,16 +23,16 @@ VidAudit is a standardized, **audited** evaluation suite for **AI-generated, syn
   <img src="figures/beyond_auc.png" alt="Leaderboard AUC vs. deployable recall" width="620">
 </p>
 
-<sub>Hollow = the leaderboard AUC papers report; filled = deployable recall (TPR at FPR 0.1%) on the matched 27k cell. High AUC, near-zero recall: most methods collapse at a usable operating point — exactly what the audit surfaces.</sub>
+<sub>Hollow = the leaderboard AUC papers report; filled = deployable recall (TPR at FPR 0.1%) on the matched 27k cell. High AUC, near-zero recall: most methods collapse at a usable operating point, exactly what the audit surfaces.</sub>
 
 The primary cell is the **matched 27k-clip GenVidBench cell** under leave-one-generator-out (LOGO) evaluation. The headline number papers report is **LOGO-OOD AUC**; the audit adds the columns that decide whether it is real: the **real-vs-real floor** (`RvR`), the **above-floor margin**, and **deployable recall** (`TPR@0.1%`). Sorted by OOD AUC, so high-AUC methods visibly separate from genuinely robust ones.
 
 | # | Model | LOGO-OOD AUC ↑ | RvR floor | Margin ↑ | TPR@0.1% ↑ | Verdict |
 |--:|---|:--:|:--:|:--:|:--:|---|
 | 1 | **WaveRep** | 0.996 | 0.534 | +0.462 | **0.816** | ✅ Certified, usable |
-| 2 | **XSFF** (ours) | 0.946 | 0.604 | +0.342 | — | ✅ Certified |
+| 2 | **XSFF** (ours) | 0.946 | 0.604 | +0.342 | n/a | ✅ Certified |
 | 3 | **ReStraV** | 0.931 | 0.586 | +0.345 | 0.634 | ✅ Certified, usable |
-| 4 | **D3** | 0.887 | 0.421 | +0.466 | — | ✅ Certified (native head) |
+| 4 | **D3** | 0.887 | 0.421 | +0.466 | n/a | ✅ Certified (native head) |
 | 5 | **FVMD** | 0.880 | 0.574 | +0.306 | 0.027 | ⚠️ Certified, collapses @0.1% |
 | 6 | **TemporalSpec+aug** (ours) | 0.871 | 0.634 | +0.237 | 0.144 | ✅ Certified, marginal recall |
 | 7 | **RAFT** | 0.855 | 0.627 | +0.228 | 0.020 | ⚠️ Certified, collapses @0.1% |
@@ -57,20 +57,20 @@ The primary cell is the **matched 27k-clip GenVidBench cell** under leave-one-ge
 - **AIGVDBench** (`aigvd-2284`): D3 scores **0.771** LOGO-OOD (native head). Only one real source, so the RvR floor does not apply; the current run used XCLIP-B/32 and a B/16 re-run is pending. Broader AIGVDBench coverage lands as those features ship.
 - **GenVidBench full-116k** (unmatched): TemporalSpec **0.819**, for reference against the matched cell.
 
-<sub>GenVidBench matched-27k cell; native head or uniform L2-LR readout per method. NSG-VD and TemporalSpec+aug operating points were computed with VidAudit's own audit engine (their AUC reproduces the paper value exactly). The two remaining `—` are not yet computed: **XSFF** needs its 34-d MV+ReStraV joint features reassembled, and **D3**'s native head needs re-running XCLIP inference (a GPU job). In the **Other cells** section, AIGVDBench's RvR is blank because that benchmark has a single real source, so the real-vs-real floor does not apply. The full 116k cell, bootstrap CIs, and the combined cross-dataset cell land here as the data package ships.</sub>
+<sub>GenVidBench matched-27k cell; native head or uniform L2-LR readout per method. NSG-VD and TemporalSpec+aug operating points were computed with VidAudit's own audit engine (their AUC reproduces the paper value exactly). The two remaining `n/a` cells are not yet computed: **XSFF** needs its 34-d MV+ReStraV joint features reassembled, and **D3**'s native head needs re-running XCLIP inference (a GPU job). In the **Other cells** section, AIGVDBench's RvR is blank because that benchmark has a single real source, so the real-vs-real floor does not apply. The full 116k cell, bootstrap CIs, and the combined cross-dataset cell land here as the data package ships.</sub>
 
 ---
 
 ## What's inside
 - **Six-control audit protocol (P1-P6)**: canonical re-encode, clip-length leakage filter, real-vs-real dataset-identity floor, matched-harness re-training, multi-seed/bootstrap CIs, and a true cross-dataset cell.
 - **Audited leaderboard**: every detector labeled by the two verdicts above, with the full metric tuple (AUC, above-floor margin, TPR@FPR, calibration), not just AUC.
-- **Model zoo**: 8 detectors behind one plugin API — **TemporalSpec** (ours), **D3**, **ReStraV**, **CLIP**, **RAFT**, **FVMD**, **WaveRep**, **NSG-VD**; backbones auto-download or load published checkpoints (sha256-verified via the zoo). Full table + setup below.
+- **Model zoo**: 8 detectors behind one plugin API: **TemporalSpec** (ours), **D3**, **ReStraV**, **CLIP**, **RAFT**, **FVMD**, **WaveRep**, **NSG-VD**; backbones auto-download or load published checkpoints (sha256-verified via the zoo). Full table + setup below.
 - **Standardized data package**: per-clip features, LOGO splits, provenance, and Croissant metadata, combining GenVidBench and AIGVDBench (bring-your-own-videos; we do not redistribute source clips).
 - **Unified CLI**: `run.py extract` (clips → features) → `run.py eval` (audit → verdicts) → `run.py leaderboard`, plus a uniform, overridable trainer driven by shell scripts.
 
 ## Setup
 
-**Prerequisites:** [Conda](https://docs.conda.io/) (Miniforge or Miniconda) and `git`. A GPU is optional — Apple Silicon (MPS) and CPU both work for development; heavy extraction and training are meant for a CUDA cluster, where the same `environment.yml` resolves a GPU build of torch.
+**Prerequisites:** [Conda](https://docs.conda.io/) (Miniforge or Miniconda) and `git`. A GPU is optional: Apple Silicon (MPS) and CPU both work for development; heavy extraction and training are meant for a CUDA cluster, where the same `environment.yml` resolves a GPU build of torch.
 
 ```bash
 # 1. Clone the repository
@@ -93,40 +93,40 @@ python -m pytest -q       # the test suite should pass
 python run.py --help      # the CLI entry point
 ```
 
-That single environment covers everything. On a CUDA cluster, create the env on a node with internet so conda resolves the GPU torch build — see `scripts/cluster_build_env.sh` for a turnkey script.
+That single environment covers everything. On a CUDA cluster, build the env on a login node with `scripts/cluster_build_env.sh`.
 
 ## Tutorial
 
 The workflow is **extract → audit → (train) → leaderboard**, one command per step. The input is a `clips.csv` manifest with columns `(video_id, generator, label, is_real, mp4_path)`: one row per clip, `is_real=1` for real sources and `0` for generated, and `generator` naming the model (or the real source).
 
-**Step 1 — Extract a detector's per-clip features.** The auto-download detectors (D3, ReStraV, CLIP, RAFT) and TemporalSpec (codec motion vectors) need no setup; WaveRep / FVMD / NSG-VD take a checkpoint via `--weights`.
+**Step 1: Extract a detector's per-clip features.** The auto-download detectors (D3, ReStraV, CLIP, RAFT) and TemporalSpec (codec motion vectors) need no setup; WaveRep / FVMD / NSG-VD take a checkpoint via `--weights`.
 ```bash
 python run.py extract restrav --manifest clips.csv --out restrav.csv
 python run.py extract waverep --manifest clips.csv --out waverep.csv \
        --weights /path/to/weights_dinov2_G4.ckpt
 ```
 
-**Step 2 — Audit the feature table.** Runs the six-control protocol and prints one leaderboard record. `--subset` restricts to a matched cell.
+**Step 2: Audit the feature table.** Runs the six-control protocol and prints one leaderboard record. `--subset` restricts to a matched cell.
 ```bash
 python run.py eval --features restrav.csv --subset baseline_clip_subset.csv
 ```
-The record reports `logo_ood` (cross-generator AUC), `rvr` (the real-vs-real floor), `margin` (above-floor headroom), and `tpr01` / `pauc10` / `brier` / `ece` — plus a **floor verdict** (certified / caught / marginal / leakage) and a **deploy tier** (usable / marginal / collapses).
+The record reports `logo_ood` (cross-generator AUC), `rvr` (the real-vs-real floor), `margin` (above-floor headroom), and `tpr01` / `pauc10` / `brier` / `ece`, plus a **floor verdict** (certified / caught / marginal / leakage) and a **deploy tier** (usable / marginal / collapses).
 
-**Step 3 — Audit a native head's own scores** (no readout retraining), e.g. D3's published decision:
+**Step 3: Audit a native head's own scores** (no readout retraining), e.g. D3's published decision:
 ```bash
 python run.py extract d3 --manifest clips.csv --out d3_scores.csv --kind score
 python run.py eval --scores d3_scores.csv
 ```
-To train instead of using a published head, the standard trainer fits a head over any feature table — `scripts/train/restrav.sh clips.csv` or `python run.py train mlp-probe --features restrav.csv` (see [Training](#training)).
+To train instead of using a published head, the standard trainer fits a head over any feature table: `scripts/train/restrav.sh clips.csv` or `python run.py train mlp-probe --features restrav.csv` (see [Training](#training)).
 
-**Step 4 — Render the leaderboard** from `leaderboard.csv`:
+**Step 4: Render the leaderboard** from `leaderboard.csv`:
 ```bash
 python run.py leaderboard      # writes LEADERBOARD.md
 ```
 
-To regenerate the whole leaderboard in one pass — extract → eval → render for every wrapped detector — run `scripts/run_all.sh <prepared_manifest.csv>` (the manifest from `prepare-data`; checkpoints for the weighted detectors via `WAVEREP_CKPT`/`NSGVD_CKPT`/`ADM_CKPT`).
+To regenerate the whole leaderboard in one pass (extract → eval → render for every wrapped detector), run `scripts/run_all.sh <prepared_manifest.csv>` (the manifest from `prepare-data`; checkpoints for the weighted detectors via `WAVEREP_CKPT`/`NSGVD_CKPT`/`ADM_CKPT`).
 
-Heavy extraction or training belongs on a cluster — wrap any step in an sbatch (the env is built with `scripts/cluster_build_env.sh`). `fetch-weights <name>` downloads and sha256-verifies a checkpoint from the zoo; `prepare-data <dataset> --source <dir>` preprocesses a downloaded dataset (P1 re-encode + P2 length filter) into the audit format.
+Heavy extraction or training belongs on a cluster; wrap any step in an sbatch (the env is built with `scripts/cluster_build_env.sh`). `fetch-weights <name>` downloads and sha256-verifies a checkpoint from the zoo; `prepare-data <dataset> --source <dir>` preprocesses a downloaded dataset (P1 re-encode + P2 length filter) into the audit format.
 
 ## Add your own detector (plugin API)
 Subclass `Detector`, set a `DetectorSpec`, implement at least one evidence interface, and register it. The audit, metrics, and leaderboard row come for free:
@@ -146,7 +146,7 @@ class MyMethod(Detector):
     #           build_model()/default_train_config() to be trainable.
 # python run.py eval mymethod   ->   P1-P6 audit + a leaderboard row
 ```
-A detector has three orthogonal capabilities: **evaluate** (`score` and/or `features`), **load weights** (`load_weights`), and **train** (`build_model` + `default_train_config`, driven by the standard trainer). Training-free methods simply leave `trainable=False`. See `FRAMEWORK.md` for the full contract.
+A detector has three orthogonal capabilities: **evaluate** (`score` and/or `features`), **load weights** (`load_weights`), and **train** (`build_model` + `default_train_config`, driven by the standard trainer). Training-free methods leave `trainable=False`. See `FRAMEWORK.md` for the full contract.
 
 ## Add a dataset
 Datasets live behind a registry, so the audit pipeline never changes. A new benchmark is a thin adapter:
@@ -168,7 +168,7 @@ All eight baselines are wrapped behind the plugin API and run from clips via `ru
 
 | Detector | Family | Backbone | Setup |
 |---|---|---|---|
-| TemporalSpec (ours) | codec | codec motion vectors (13-d) | none — PyAV codec MVs |
+| TemporalSpec (ours) | codec | codec motion vectors (13-d) | none (PyAV codec MVs) |
 | D3 | appearance | XCLIP-ViT-B/16 | auto-download (training-free) |
 | ReStraV | appearance | DINOv2 ViT-S/14 | auto-download (torch.hub) |
 | CLIP | appearance | CLIP-ViT-B/32 | auto-download |
@@ -255,33 +255,33 @@ MIT (see `LICENSE`). Wrapped detectors and datasets retain their original licens
 
 ## References
 
-Every wrapped detector, its key backbone/components, the benchmarks, and methods we could not include yet — with their original papers.
+Every wrapped detector, its key backbone/components, the benchmarks, and methods we could not include yet, with their original papers.
 
 **Detectors (model zoo)**
-- **TemporalSpec** (ours; codec motion vectors) — VidAudit / WACV 2027. _Citation to be added after publication._
-- **D3** (X-CLIP backbone; training-free) — C. Zheng, R. Suo, C. Lin, Z. Zhao, L. Yang, S. Liu, M. Yang, C. Wang, C. Shen. "D³: Training-Free AI-Generated Video Detection Using Second-Order Features." ICCV 2025. [arXiv:2508.00701](https://arxiv.org/abs/2508.00701).
-- **ReStraV** (DINOv2 backbone) — C. Internò et al. "AI-Generated Video Detection via Perceptual Straightening." NeurIPS 2025. [arXiv:2507.00583](https://arxiv.org/abs/2507.00583).
-- **WaveRep** (DINOv2 + forensic augmentation) — R. Corvi, D. Cozzolino, E. Prashnani, S. De Mello, K. Nagano, L. Verdoliva. "Seeing What Matters: Generalizable AI-Generated Video Detection with Forensic-Oriented Augmentation." NeurIPS 2025. [arXiv:2506.16802](https://arxiv.org/abs/2506.16802).
-- **NSG-VD** (ADM diffusion + Swin discriminator) — S. Zhang, Z. Lian, J. Yang, D. Li, G. Pang, et al. "Physics-Driven Spatiotemporal Modeling for AI-Generated Video Detection." NeurIPS 2025. [arXiv:2510.08073](https://arxiv.org/abs/2510.08073).
-- **FVMD** (PIPs++ point tracker) — J. Liu, Y. Qu, Q. Yan, X. Zeng, L. Wang, R. Liao. "Fréchet Video Motion Distance: A Metric for Evaluating Motion Consistency in Videos." 2024. [arXiv:2407.16124](https://arxiv.org/abs/2407.16124).
-- **CLIP** (appearance baseline) — A. Radford et al. "Learning Transferable Visual Models From Natural Language Supervision." ICML 2021. [arXiv:2103.00020](https://arxiv.org/abs/2103.00020).
-- **RAFT** (optical-flow baseline) — Z. Teed, J. Deng. "RAFT: Recurrent All-Pairs Field Transforms for Optical Flow." ECCV 2020. [arXiv:2003.12039](https://arxiv.org/abs/2003.12039).
+- **TemporalSpec** (ours; codec motion vectors). VidAudit / WACV 2027. _Citation to be added after publication._
+- **D3** (X-CLIP backbone; training-free). C. Zheng, R. Suo, C. Lin, Z. Zhao, L. Yang, S. Liu, M. Yang, C. Wang, C. Shen. "D³: Training-Free AI-Generated Video Detection Using Second-Order Features." ICCV 2025. [arXiv:2508.00701](https://arxiv.org/abs/2508.00701).
+- **ReStraV** (DINOv2 backbone). C. Internò et al. "AI-Generated Video Detection via Perceptual Straightening." NeurIPS 2025. [arXiv:2507.00583](https://arxiv.org/abs/2507.00583).
+- **WaveRep** (DINOv2 + forensic augmentation). R. Corvi, D. Cozzolino, E. Prashnani, S. De Mello, K. Nagano, L. Verdoliva. "Seeing What Matters: Generalizable AI-Generated Video Detection with Forensic-Oriented Augmentation." NeurIPS 2025. [arXiv:2506.16802](https://arxiv.org/abs/2506.16802).
+- **NSG-VD** (ADM diffusion + Swin discriminator). S. Zhang, Z. Lian, J. Yang, D. Li, G. Pang, et al. "Physics-Driven Spatiotemporal Modeling for AI-Generated Video Detection." NeurIPS 2025. [arXiv:2510.08073](https://arxiv.org/abs/2510.08073).
+- **FVMD** (PIPs++ point tracker). J. Liu, Y. Qu, Q. Yan, X. Zeng, L. Wang, R. Liao. "Fréchet Video Motion Distance: A Metric for Evaluating Motion Consistency in Videos." 2024. [arXiv:2407.16124](https://arxiv.org/abs/2407.16124).
+- **CLIP** (appearance baseline). A. Radford et al. "Learning Transferable Visual Models From Natural Language Supervision." ICML 2021. [arXiv:2103.00020](https://arxiv.org/abs/2103.00020).
+- **RAFT** (optical-flow baseline). Z. Teed, J. Deng. "RAFT: Recurrent All-Pairs Field Transforms for Optical Flow." ECCV 2020. [arXiv:2003.12039](https://arxiv.org/abs/2003.12039).
 
 **Backbones & components**
-- **X-CLIP** (D3) — B. Ni et al. "Expanding Language-Image Pretrained Models for General Video Recognition." ECCV 2022. [arXiv:2208.02816](https://arxiv.org/abs/2208.02816).
-- **DINOv2** (ReStraV, WaveRep) — M. Oquab et al. "DINOv2: Learning Robust Visual Features without Supervision." TMLR 2024. [arXiv:2304.07193](https://arxiv.org/abs/2304.07193).
-- **Swin Transformer** (NSG-VD discriminator) — Z. Liu et al. "Swin Transformer: Hierarchical Vision Transformer using Shifted Windows." ICCV 2021. [arXiv:2103.14030](https://arxiv.org/abs/2103.14030).
-- **ADM / guided diffusion** (NSG-VD score function) — P. Dhariwal, A. Nichol. "Diffusion Models Beat GANs on Image Synthesis." NeurIPS 2021. [arXiv:2105.05233](https://arxiv.org/abs/2105.05233).
-- **PIPs++ / PointOdyssey** (FVMD tracker) — Y. Zheng, A. W. Harley, B. Shen, G. Wetzstein, L. J. Guibas. "PointOdyssey: A Large-Scale Synthetic Dataset for Long-Term Point Tracking." ICCV 2023. [arXiv:2307.15055](https://arxiv.org/abs/2307.15055).
+- **X-CLIP** (D3). B. Ni et al. "Expanding Language-Image Pretrained Models for General Video Recognition." ECCV 2022. [arXiv:2208.02816](https://arxiv.org/abs/2208.02816).
+- **DINOv2** (ReStraV, WaveRep). M. Oquab et al. "DINOv2: Learning Robust Visual Features without Supervision." TMLR 2024. [arXiv:2304.07193](https://arxiv.org/abs/2304.07193).
+- **Swin Transformer** (NSG-VD discriminator). Z. Liu et al. "Swin Transformer: Hierarchical Vision Transformer using Shifted Windows." ICCV 2021. [arXiv:2103.14030](https://arxiv.org/abs/2103.14030).
+- **ADM / guided diffusion** (NSG-VD score function). P. Dhariwal, A. Nichol. "Diffusion Models Beat GANs on Image Synthesis." NeurIPS 2021. [arXiv:2105.05233](https://arxiv.org/abs/2105.05233).
+- **PIPs++ / PointOdyssey** (FVMD tracker). Y. Zheng, A. W. Harley, B. Shen, G. Wetzstein, L. J. Guibas. "PointOdyssey: A Large-Scale Synthetic Dataset for Long-Term Point Tracking." ICCV 2023. [arXiv:2307.15055](https://arxiv.org/abs/2307.15055).
 
 **Benchmarks**
-- **GenVidBench** — Z. Ni et al. "GenVidBench: A 6-Million Benchmark for AI-Generated Video Detection." AAAI 2026. [arXiv:2501.11340](https://arxiv.org/abs/2501.11340).
-- **AIGVDBench** — L. Ma, Z. Xue, Y. Wang, Z. Yan, J. Xu, X. Jiang, H. Yu, Y. Liao, Z. Bi. "Your One-Stop Solution for AI-Generated Video Detection." 2026. [arXiv:2601.11035](https://arxiv.org/abs/2601.11035).
+- **GenVidBench**. Z. Ni et al. "GenVidBench: A 6-Million Benchmark for AI-Generated Video Detection." AAAI 2026. [arXiv:2501.11340](https://arxiv.org/abs/2501.11340).
+- **AIGVDBench**. L. Ma, Z. Xue, Y. Wang, Z. Yan, J. Xu, X. Jiang, H. Yu, Y. Liao, Z. Bi. "Your One-Stop Solution for AI-Generated Video Detection." 2026. [arXiv:2601.11035](https://arxiv.org/abs/2601.11035).
 
-**Other detectors (no public weights — not yet in the zoo)**
-- **DeMamba** — H. Chen et al. "DeMamba: AI-Generated Video Detection on Million-Scale GenVideo Benchmark." 2024. [arXiv:2405.19707](https://arxiv.org/abs/2405.19707).
-- **DeCoF** — L. Ma, Z. Yan, Q. Guo, Y. Liao, H. Yu, P. Zhou. "Detecting AI-Generated Video via Frame Consistency." 2024. [arXiv:2402.02085](https://arxiv.org/abs/2402.02085).
-- **VidGuard-R1** — K. Park et al. "VidGuard-R1: AI-Generated Video Detection and Explanation via Reasoning MLLMs and RL." 2025. [arXiv:2510.02282](https://arxiv.org/abs/2510.02282).
+**Other detectors (no public weights, not yet in the zoo)**
+- **DeMamba**. H. Chen et al. "DeMamba: AI-Generated Video Detection on Million-Scale GenVideo Benchmark." 2024. [arXiv:2405.19707](https://arxiv.org/abs/2405.19707).
+- **DeCoF**. L. Ma, Z. Yan, Q. Guo, Y. Liao, H. Yu, P. Zhou. "Detecting AI-Generated Video via Frame Consistency." 2024. [arXiv:2402.02085](https://arxiv.org/abs/2402.02085).
+- **VidGuard-R1**. K. Park et al. "VidGuard-R1: AI-Generated Video Detection and Explanation via Reasoning MLLMs and RL." 2025. [arXiv:2510.02282](https://arxiv.org/abs/2510.02282).
 
 ---
 <sub>Keywords: AI-generated video detection, synthetic video detection, deepfake video detection, video forensics, generative video benchmark, detection leaderboard, evaluation toolkit, model zoo, GenVidBench, AIGVDBench, AIGC video, diffusion video detection.</sub>
