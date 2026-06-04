@@ -41,7 +41,7 @@ out = sys.argv[1]
 print(f"{'detector':<14}{'LOGO-OOD':>9}{'RvR':>7}{'margin':>8}{'TPR@0.1%':>9}")
 for f in sorted(glob.glob(os.path.join(out, "*.audit.json"))):
     d = json.load(open(f)); name = os.path.basename(f).split(".")[0]
-    g = lambda k: ("%.3f" % d[k]) if d.get(k) is not None else "—"
+    g = lambda k: ("%.3f" % d[k]) if d.get(k) is not None else "n/a"
     print(f"{name:<14}{g('logo_ood'):>9}{g('rvr'):>7}{g('margin'):>8}{g('tpr01'):>9}")
 PY
 

@@ -10,7 +10,7 @@ dataset repo; videos are NOT redistributed by us):
 
 The label and the generator come from the PATH (Real vs OpenSource/<cat>/<Model>), not
 the jsonl. The videos live inside per-model zips, so we enumerate mp4 members directly
-(stdlib zipfile) — no manual unzip needed — and also tolerate an already-extracted tree.
+(stdlib zipfile), no manual unzip needed, and also tolerate an already-extracted tree.
 One real source ("Real"), so the real-vs-real floor (P3) auto-disables.
 """
 from __future__ import annotations
