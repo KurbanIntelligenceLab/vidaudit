@@ -19,7 +19,7 @@ Overridable `TrainConfig` fields: `head` (`mlp`|`linear`), `hidden` (comma list)
 `batch_size`, `amp`, `grad_clip`, `seed`, `device`, `val_frac`, `feature_cols`,
 `subset`, `val_features`. Unknown keys land in `cfg.extra` (e.g. `--set focal_gamma=1.5`).
 Loss / optimizer / scheduler / head are name-addressable registries
-(`vidaudit/train/registries.py`) — add one with a decorator and it is immediately
+(`vidaudit/train/registries.py`); add one with a decorator and it is immediately
 usable from `--set`.
 
 The trainer learns a head over a **precomputed feature table** (an `extract`
