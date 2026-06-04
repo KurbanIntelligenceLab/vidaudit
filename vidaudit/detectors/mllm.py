@@ -56,6 +56,7 @@ class MLLMDetector(Detector):
     """Subclass and set `spec` + the prompt/model fields. Heavy: loads a 7-9B VLM."""
 
     model_id: str = ""
+    hub: str = "hf"                  # "hf" | "modelscope" (where the weights live)
     system_prompt: str = ""
     user_prompt: str = "Is this video real or fake?"
     answer_tags: Tuple[str, str] = ("<answer>", "</answer>")
@@ -76,13 +77,25 @@ class MLLMDetector(Detector):
                             else "mps" if torch.backends.mps.is_available() else "cpu")
         return self._device
 
+    def _resolve_model_path(self) -> str:
+        """HF id as-is; ModelScope id -> a local snapshot dir (needs `pip install modelscope`)."""
+        if self.hub == "modelscope":
+            try:
+                from modelscope import snapshot_download
+            except ImportError as e:
+                raise RuntimeError(f"{self.model_id} is hosted on ModelScope; "
+                                   f"`pip install modelscope` to load it.") from e
+            return snapshot_download(self.model_id)
+        return self.model_id
+
     def _load(self):
         if self._model is None:
             import torch
             from transformers import AutoModelForImageTextToText, AutoProcessor
-            self._proc = AutoProcessor.from_pretrained(self.model_id)
+            path = self._resolve_model_path()
+            self._proc = AutoProcessor.from_pretrained(path)
             self._model = AutoModelForImageTextToText.from_pretrained(
-                self.model_id, torch_dtype=torch.bfloat16).eval().to(self._dev())
+                path, torch_dtype=torch.bfloat16).eval().to(self._dev())
         return self._model, self._proc
 
     def load_weights(self, path: Optional[str] = None) -> None:

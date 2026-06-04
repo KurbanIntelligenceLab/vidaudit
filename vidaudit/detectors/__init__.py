@@ -20,3 +20,4 @@ from . import clip            # noqa: F401,E402
 from . import probe           # noqa: F401,E402  (trainable readout; validates the trainer)
 from . import aigvdet         # noqa: F401,E402  (two-stream ResNet50; arXiv:2403.16638)
 from . import skyra           # noqa: F401,E402  (Qwen2.5-VL-7B MLLM; arXiv:2512.15693)
+from . import videoveritas    # noqa: F401,E402  (Qwen3-VL-8B MLLM, ModelScope; arXiv:2602.08828)

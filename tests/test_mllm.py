@@ -34,3 +34,13 @@ def test_skyra_registered_lazy():
     assert d.spec.family == "mllm" and d.spec.published_weights
     assert d.has_native_head and d.has_features
     assert d.model_id == "JoeLeelyf/Skyra-RL" and d.spec.license == "CC-BY-4.0"
+
+
+def test_videoveritas_registered_modelscope():
+    from vidaudit.detectors.registry import all_detectors, get
+    import vidaudit.detectors  # noqa: F401
+    assert "videoveritas" in all_detectors()
+    d = get("videoveritas")     # lazy: no ModelScope download
+    assert d.spec.family == "mllm" and d.spec.license == "Apache-2.0"
+    assert d.hub == "modelscope" and d.model_id == "EricTanh/VideoVeritas"
+    assert d.has_native_head and d.has_features
