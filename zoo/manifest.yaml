@@ -29,6 +29,20 @@ fvmd:
       sha256: ""           # public release; fill after first download if you want verification
       size_mb: null
 
+aigvdet:
+  paper: "Bai, Lin, Cao; PRCV 2024 (arXiv:2403.16638)"
+  license: "academic research only (non-commercial); see the AIGVDet repo"
+  backbone: "two-stream ResNet50 (RGB + RAFT optical-flow visualization)"
+  weights:
+    - file: original.pth      # spatial branch
+      url: ""                 # not mirrored: authors' Google Drive (academic-only); pass --weights <dir>
+      sha256: ""
+      size_mb: null
+    - file: optical.pth       # optical branch
+      url: ""                 # not mirrored: authors' Google Drive (academic-only); pass --weights <dir>
+      sha256: ""
+      size_mb: null
+
 nsgvd:
   paper: "Zhang et al., NeurIPS 2025 (arXiv:2510.08073)"
   license: "see NSG-VD repo"
