@@ -113,14 +113,15 @@ vidaudit/
                  temporalspec.py d3.py restrav.py waverep.py nsgvd.py fvmd.py
                  raft.py clip.py  probe.py (trainable readout)
     data/        datasets/base.py (Dataset ABC + registry)  datasets/<name>.py
-                 cells.py (matched/LOGO)  canonical.py (P1) filters.py (P2) fetch.py [planned]
+                 cells.py (matched/LOGO)  canonical.py (P1)  filters.py (P2)
+                 fetch.py (reconstruct)  croissant.py (released-artifact metadata)
     audit/       protocol.py (P1-P6)  metrics.py  verdict.py  leaderboard.py
     train/       config.py (TrainConfig)  trainer.py (SupervisedTrainer)
                  registries.py (loss/optim/sched/head)  data.py (feature tables)
     features/    mv.py (shared 13-d codec/MV extractor)
   scripts/       train/<model>.sh + README   (defaults + repeatable --set passthrough)
   zoo/           manifest.yaml (weights: url + sha256 + license)
-  run.py         extract | eval | train | leaderboard | fetch-weights[planned] | fetch-data[planned]
+  run.py         extract | eval | train | leaderboard | fetch-weights | fetch-data
   leaderboard.csv  LEADERBOARD.md  README.md  FRAMEWORK.md
 ```
 
@@ -162,4 +163,5 @@ Excluded for now (no public weights): **DeMamba** (authors withhold, GitHub issu
 - [x] All 8 detector wrappers from clips: D3, ReStraV, CLIP, RAFT, TemporalSpec (clone-and-run, verified) + WaveRep, FVMD (checkpoints, verified) + NSG-VD (ADM diffusion + Swin; verifying). Vendored model code in `vidaudit/_vendor/` (PIPs++, NSG-VD), separate from the thin wrappers
 - [x] Weight-fetch zoo (`zoo.py` + `zoo/manifest.yaml`, sha256-verified); checkpoints on cluster permanent storage (public mirror TBD)
 - [x] Standardized trainer (`TrainConfig` + loss/optim/sched/head registries + uniform loop), validated end-to-end on `MLP-Probe`
-- [ ] Standardized data package + Croissant; HF dataset + Space; per-detector paper training recipes (ReStraV/WaveRep/NSG-VD heads); AIGVDBench combined cell (D3 re-run at XCLIP-B/16)
+- [x] Standardized data package: P1 canonical re-encode + P2 length filter + local reconstruct (`fetch-data`) + Croissant emitter
+- [ ] Public weight mirror + HF dataset + Space; per-detector paper training recipes (ReStraV/WaveRep/NSG-VD heads); AIGVDBench combined cell (D3 re-run at XCLIP-B/16)

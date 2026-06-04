@@ -142,11 +142,17 @@ Vendored model code (PIPs++ for FVMD, the NSG-VD codebase) lives under `vidaudit
 Excluded for now (no public weights): **DeMamba** (authors withhold the checkpoints, GitHub issues #5/#16/#21), DeCoF / ATSS / CMTA / VidGuard-R1 (no release). On a "wanted: weights" list.
 
 ## Data package
-We **cannot redistribute** the GenVidBench / AIGVDBench source videos (copyright). VidAudit ships the standardized **per-clip features, LOGO splits, provenance labels, and the canonical-pipeline recipe**; `vidaudit/data/fetch.py` reconstructs clips from the original sources on your machine.
+We **cannot redistribute** the GenVidBench / AIGVDBench source videos (copyright). VidAudit ships the standardized **per-clip features, LOGO/RvR splits, provenance labels, and a reproducible recipe** — two controls applied to *your* local source clips so everyone evaluates byte-identical inputs:
 
-- 🤗 **HuggingFace dataset**: [`vidaudit/...`](#) _(coming)_
-- 🤗 **Leaderboard Space**: [`vidaudit/leaderboard`](#) _(coming)_
-- Croissant metadata: _(coming)_
+- **P1 canonical re-encode** (`vidaudit/data/canonical.py`): one fixed H.264 recipe normalizes codec/container fingerprints (recorded as a `recipe_id` for provenance; H.264 because the codec-MV detectors need H.264 motion vectors).
+- **P2 clip-length filter** (`vidaudit/data/filters.py`): measures duration→label leakage and enforces a common frame budget so length cannot stand in for content.
+
+`fetch-data` runs both on your downloaded clips and writes a ready-to-extract manifest + `provenance.json`; `vidaudit/data/croissant.py` emits ML Croissant metadata for the released feature tables.
+```bash
+python run.py fetch-data --manifest provenance.csv --sources ~/genvidbench --out data/gvb --min-frames 16
+python run.py extract temporalspec --manifest data/gvb/manifest.csv --out features/ts.csv
+```
+- 🤗 **HuggingFace dataset / leaderboard Space**: _(coming)_
 
 ## Training
 Training is a first-class, standardized subsystem, not an optional hook. The trainer learns a classifier head over a precomputed feature table (the `extract` output), so it reuses the extract pipeline and never re-decodes video in the loop; preprocessing (median-impute → z-score) matches the audit and is persisted in the checkpoint. Defaults live in `scripts/train/<model>.sh`; loss / optimizer / scheduler / head are name-addressable registries you extend with a one-line decorator, and every knob is overridable on the command line (repeatable `--set key=value`, later wins; unknown keys route to `cfg.extra`):
@@ -165,10 +171,11 @@ OUT=runs/probe scripts/train/mlp-probe.sh features/train.csv \
 - [x] Plugin API (eval / load-weights / train as three orthogonal capabilities)
 - [x] Unified conda environment (pinned + lockfile)
 - [x] Audit engine in `vidaudit/audit/` (matched-cell LOGO + RvR + the metric tuple + both verdicts), reproduces the paper numbers on real feature CSVs
-- [x] `run.py` CLI: `extract`, `eval --features`, `train`, `leaderboard`
+- [x] `run.py` CLI: `extract`, `eval --features`, `train`, `leaderboard`, `fetch-weights`, `fetch-data`
 - [x] Detector wrappers for all 8 baselines (auto-download tier + checkpoint tier), each smoke-tested from clips
 - [x] Weight-fetch zoo (`fetch_weights` + `zoo/manifest.yaml`, sha256-verified)
-- [ ] Public weight mirror + standardized data package + Croissant `[planned]`
+- [x] Standardized data package: P1 canonical re-encode + P2 length filter + local reconstruct (`fetch-data`) + Croissant emitter
+- [ ] Public weight mirror (host the cluster checkpoints over HTTP) `[planned]`
 - [ ] HuggingFace dataset + leaderboard Space `[planned]`
 - [x] Standardized trainer (`TrainConfig` + registries + uniform loop), validated end-to-end on `MLP-Probe`
 - [ ] Per-detector paper training recipes (ReStraV / WaveRep / NSG-VD heads) `[next]`

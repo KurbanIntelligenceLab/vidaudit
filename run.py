@@ -5,8 +5,8 @@
     python run.py eval --features clips.csv        # audit a precomputed feature table
     python run.py eval <model>                     # audit a registered detector from clips [in progress]
     python run.py train <model> --features f.csv   # train a method's head via the standard trainer
-    python run.py fetch-weights <name>             # download + verify weights            [planned]
-    python run.py fetch-data <name>                # fetch a dataset package              [planned]
+    python run.py fetch-weights <name>             # download + sha256-verify weights from the zoo
+    python run.py fetch-data --manifest m.csv ...  # reconstruct a dataset locally (P1 re-encode + P2 filter)
 """
 from __future__ import annotations
 
@@ -57,9 +57,16 @@ def main(argv=None) -> int:
     tr.add_argument("--set", dest="overrides", action="append", default=[], metavar="KEY=VALUE",
                     help="override any TrainConfig field (repeatable), e.g. --set lr=3e-4 --set epochs=100")
 
-    for name in ("fetch-weights", "fetch-data"):
-        s = sub.add_parser(name, help=f"{name.replace('-', ' ')} (download + verify) [planned]")
-        s.add_argument("name")
+    fw = sub.add_parser("fetch-weights", help="download + sha256-verify weights from the zoo")
+    fw.add_argument("name", help="zoo manifest entry (e.g. waverep, fvmd, nsgvd)")
+    fw.add_argument("--force", action="store_true", help="re-download even if cached")
+
+    fd = sub.add_parser("fetch-data", help="reconstruct a dataset locally (P1 re-encode + P2 filter)")
+    fd.add_argument("--manifest", required=True,
+                    help="provenance manifest CSV (video_id, generator, label, is_real, src_path|url)")
+    fd.add_argument("--out", required=True, help="output dir for canonical clips + the ready manifest")
+    fd.add_argument("--sources", default=None, help="dir of your downloaded source videos (for src_path rows)")
+    fd.add_argument("--min-frames", type=int, default=None, help="apply the P2 length filter with this minimum")
 
     args = p.parse_args(argv)
 
@@ -123,12 +130,26 @@ def main(argv=None) -> int:
         print(f"trained {args.model} -> {out}")
         return 0
 
-    if args.cmd in ("fetch-weights", "fetch-data"):
-        print(f"`{args.cmd}` is not wired yet (see the roadmap in README.md). "
-              f"Live now: `python run.py leaderboard`, `eval --features <csv>`, "
-              f"`extract <model>`, and `train <model> --features <csv>`.",
-              file=sys.stderr)
-        return 2
+    if args.cmd == "fetch-weights":
+        from vidaudit.zoo import fetch_weights
+        try:
+            print(f"weights -> {fetch_weights(args.name, force=args.force)}")
+        except (RuntimeError, FileNotFoundError, KeyError) as e:
+            print(str(e), file=sys.stderr)
+            return 2
+        return 0
+
+    if args.cmd == "fetch-data":
+        from vidaudit.data.fetch import reconstruct
+        from vidaudit.data.filters import KFilter
+        kf = KFilter(min_frames=args.min_frames) if args.min_frames else None
+        try:
+            man = reconstruct(args.manifest, args.out, sources_dir=args.sources, kfilter=kf)
+        except (RuntimeError, FileNotFoundError) as e:
+            print(str(e), file=sys.stderr)
+            return 2
+        print(f"reconstructed -> {man}")
+        return 0
 
     p.print_help()
     return 1
