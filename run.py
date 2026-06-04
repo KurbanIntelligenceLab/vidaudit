@@ -6,8 +6,8 @@
     python run.py eval --scores clips.csv          # audit a fixed native/trained score (no readout)
     python run.py eval <model>                     # audit a registered detector from clips [in progress]
     python run.py train <model> --features f.csv   # train a method's head via the standard trainer
+    python run.py prepare-data <ds> --source dir  # preprocess a downloaded dataset (P1 re-encode + P2 filter)
     python run.py fetch-weights <name>             # download + sha256-verify weights from the zoo
-    python run.py fetch-data --manifest m.csv ...  # reconstruct a dataset locally (P1 re-encode + P2 filter)
 """
 from __future__ import annotations
 
@@ -64,7 +64,16 @@ def main(argv=None) -> int:
     fw.add_argument("name", help="zoo manifest entry (e.g. waverep, fvmd, nsgvd)")
     fw.add_argument("--force", action="store_true", help="re-download even if cached")
 
-    fd = sub.add_parser("fetch-data", help="reconstruct a dataset locally (P1 re-encode + P2 filter)")
+    pp = sub.add_parser("prepare-data",
+                        help="preprocess a downloaded dataset (P1 re-encode + P2 filter) into the audit format")
+    pp.add_argument("dataset", help="registered dataset adapter (genvidbench | aigvdbench)")
+    pp.add_argument("--source", required=True, help="your local download of the ORIGINAL dataset")
+    pp.add_argument("--out", required=True, help="output dir for canonical clips + the ready manifest")
+    pp.add_argument("--min-frames", type=int, default=None, help="apply the P2 length filter with this minimum")
+    pp.add_argument("--limit", type=int, default=None, help="cap total clips (dev runs)")
+    pp.add_argument("--per-source", type=int, default=None, help="cap clips per source/generator (dev runs)")
+
+    fd = sub.add_parser("fetch-data", help="low-level: reconstruct from a provenance manifest (P1 + P2)")
     fd.add_argument("--manifest", required=True,
                     help="provenance manifest CSV (video_id, generator, label, is_real, src_path|url)")
     fd.add_argument("--out", required=True, help="output dir for canonical clips + the ready manifest")
@@ -150,6 +159,19 @@ def main(argv=None) -> int:
         except (RuntimeError, FileNotFoundError, KeyError) as e:
             print(str(e), file=sys.stderr)
             return 2
+        return 0
+
+    if args.cmd == "prepare-data":
+        from vidaudit.data.fetch import prepare_dataset
+        from vidaudit.data.filters import KFilter
+        kf = KFilter(min_frames=args.min_frames) if args.min_frames else None
+        try:
+            man = prepare_dataset(args.dataset, args.source, args.out, kfilter=kf,
+                                  limit=args.limit, per_source=args.per_source)
+        except (RuntimeError, FileNotFoundError, KeyError) as e:
+            print(str(e), file=sys.stderr)
+            return 2
+        print(f"prepared {args.dataset} -> {man}")
         return 0
 
     if args.cmd == "fetch-data":

@@ -1,12 +1,13 @@
 # Model-zoo published weights: download + sha256-verify + cache (see vidaudit/zoo.py).
-# Each entry records a sha256 so the checkpoint verifies the moment it is hosted.
+# Each entry records a sha256 so the checkpoint verifies on load.
 #
-# Hosting status: FVMD's point tracker is a public release and auto-fetches. The other
-# checkpoints are pending a public mirror -- their `url` is a placeholder for now. Until
-# the mirror is live, obtain the checkpoint and pass it explicitly:
+# We do NOT mirror weights. FVMD's point tracker is a public release and auto-fetches.
+# The others: obtain each from its ORIGINAL release (see `paper`/the README weights table)
+# and pass it explicitly -- the sha256 below verifies it:
 #     python run.py extract <model> --weights /path/to/ckpt
 #     # or in code: detector.load_weights("/path/to/ckpt")
-# When the mirror is up, fill each `url` and fetch_weights downloads + sha256-verifies it.
+# If a future release publishes a public URL, drop it into `url` and fetch_weights will
+# download + sha256-verify automatically.
 
 waverep:
   paper: "Corvi et al., NeurIPS 2025 (arXiv:2506.16802)"
@@ -14,7 +15,7 @@ waverep:
   backbone: "timm vit_base_patch14_reg4_dinov2.lvd142m (img_size=504, num_classes=1)"
   weights:
     - file: weights_dinov2_G4.ckpt
-      url: ""              # PLACEHOLDER: public mirror pending -- pass --weights <local ckpt> meanwhile
+      url: ""              # not mirrored: obtain from the original release; pass --weights <local ckpt>
       sha256: "50d639049d928986ba7d69861a4fe4f3e7afbba1843e3e089cdf6b4748f53d5b"
       size_mb: 331
 
@@ -34,7 +35,7 @@ nsgvd:
   backbone: "SingleSwinBlock diffusion-noise-score discriminator (per-generator ckpts)"
   weights:
     - file: standard-Pika-mp.pth
-      url: ""              # PLACEHOLDER: public mirror pending -- pass --weights <local ckpt> meanwhile
+      url: ""              # not mirrored: obtain from the original release; pass --weights <local ckpt>
       sha256: "c1d2a9121f5172e79c47ceb15df29987c9828ee03e1fd8302477a8a12bf7599f"
       size_mb: 2
 
@@ -45,6 +46,6 @@ nsgvd-adm:
   license: "OpenAI guided-diffusion (MIT)"
   weights:
     - file: 256x256_diffusion_uncond.pt
-      url: ""              # PLACEHOLDER: public mirror pending; also available from the OpenAI guided-diffusion release
+      url: ""              # not mirrored: obtain from the OpenAI guided-diffusion release; pass --weights <local ckpt>
       sha256: "a37c32fffd316cd494cf3f35b339936debdc1576dad13fe57c42399a5dbc78b1"
       size_mb: 2109

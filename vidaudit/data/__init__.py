@@ -21,6 +21,6 @@ from vidaudit.data.datasets import (  # noqa: F401
     DatasetSpec, VideoDataset, all_datasets, get_dataset, register_dataset,
 )
 from vidaudit.data.fetch import (  # noqa: F401
-    byo_instructions, download_file, reconstruct,
+    byo_instructions, download_file, prepare_dataset, reconstruct,
 )
 from vidaudit.data.filters import KFilter, frame_count  # noqa: F401

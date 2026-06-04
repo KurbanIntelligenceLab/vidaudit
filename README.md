@@ -124,7 +124,7 @@ To train instead of using a published head, the standard trainer fits a head ove
 python run.py leaderboard      # writes LEADERBOARD.md
 ```
 
-Heavy extraction or training belongs on a cluster — wrap any step in an sbatch (templates in `scripts/`). `fetch-weights <name>` downloads and sha256-verifies a checkpoint from the zoo; `fetch-data` reconstructs a dataset locally (P1 re-encode + P2 length filter).
+Heavy extraction or training belongs on a cluster — wrap any step in an sbatch (templates in `scripts/`). `fetch-weights <name>` downloads and sha256-verifies a checkpoint from the zoo; `prepare-data <dataset> --source <dir>` preprocesses a downloaded dataset (P1 re-encode + P2 length filter) into the audit format.
 
 ## Add your own detector (plugin API)
 Subclass `Detector`, set a `DetectorSpec`, implement at least one evidence interface, and register it. The audit, metrics, and leaderboard row come for free:
@@ -177,28 +177,43 @@ All eight baselines are wrapped behind the plugin API and run from clips via `ru
 
 Vendored model code (PIPs++ for FVMD, the NSG-VD codebase) lives under `vidaudit/_vendor/`, kept separate from our thin wrappers and carrying its upstream license.
 
-**Weight downloads.** FVMD's point tracker auto-fetches from its public release. The WaveRep, NSG-VD, and ADM checkpoints have their sha256s recorded in `zoo/manifest.yaml`; a public mirror is on the way — until then, obtain the checkpoint and pass it with `--weights`.
+**Weight downloads.** We mirror nothing here either — FVMD's point tracker auto-fetches from its public release; the others you obtain from their original release and pass with `--weights` (or `load_weights(path)`). `zoo/manifest.yaml` records a sha256 per checkpoint so it verifies on load.
 
-| Checkpoint | Size | Download |
+| Checkpoint | Size | Original source |
 |---|---|---|
-| WaveRep `weights_dinov2_G4.ckpt` | 331 MB | _placeholder — public mirror coming_ |
-| NSG-VD `standard-Pika-mp.pth` | 2 MB | _placeholder — public mirror coming_ |
-| ADM `256x256_diffusion_uncond.pt` | 2.1 GB | _placeholder — public mirror coming_ |
+| WaveRep `weights_dinov2_G4.ckpt` | 331 MB | WaveRep release ([arXiv:2506.16802](https://arxiv.org/abs/2506.16802)) |
+| NSG-VD `standard-Pika-mp.pth` | 2 MB | NSG-VD release ([arXiv:2510.08073](https://arxiv.org/abs/2510.08073)) |
+| ADM `256x256_diffusion_uncond.pt` | 2.1 GB | [OpenAI guided-diffusion](https://github.com/openai/guided-diffusion) |
 
 Excluded for now (no public weights): **DeMamba** (authors withhold the checkpoints, GitHub issues #5/#16/#21), DeCoF / ATSS / CMTA / VidGuard-R1 (no release). On a "wanted: weights" list.
 
 ## Data package
-We **cannot redistribute** the GenVidBench / AIGVDBench source videos (copyright). VidAudit ships the standardized **per-clip features, LOGO/RvR splits, provenance labels, and a reproducible recipe** — two controls applied to *your* local source clips so everyone evaluates byte-identical inputs:
 
-- **P1 canonical re-encode** (`vidaudit/data/canonical.py`): one fixed H.264 recipe normalizes codec/container fingerprints (recorded as a `recipe_id` for provenance; H.264 because the codec-MV detectors need H.264 motion vectors).
+**We host and mirror nothing.** You download the original datasets from their official releases, and VidAudit's preprocessing tool turns that download into standardized, audited inputs — so everyone evaluates byte-identical clips without us ever redistributing copyrighted video. Two controls, one command:
+
+- **P1 canonical re-encode** (`vidaudit/data/canonical.py`): one fixed H.264 recipe normalizes codec/container fingerprints (recorded as a `recipe_id`; H.264 because the codec-MV detectors need H.264 motion vectors).
 - **P2 clip-length filter** (`vidaudit/data/filters.py`): measures duration→label leakage and enforces a common frame budget so length cannot stand in for content.
 
-`fetch-data` runs both on your downloaded clips and writes a ready-to-extract manifest + `provenance.json`; `vidaudit/data/croissant.py` emits ML Croissant metadata for the released feature tables.
+**Supported datasets** (download from the original source, then preprocess):
+
+| Dataset | Download (original) | Adapter |
+|---|---|---|
+| GenVidBench | [github.com/genvidbench/GenVidBench](https://github.com/genvidbench/GenVidBench) (HF release) | `vidaudit/data/datasets/genvidbench.py` |
+| AIGVDBench | [github.com/LongMa-2025/AIGVDBench](https://github.com/LongMa-2025/AIGVDBench) (HF dataset) | `vidaudit/data/datasets/aigvdbench.py` |
+
 ```bash
-python run.py fetch-data --manifest provenance.csv --sources ~/genvidbench --out data/gvb --min-frames 16
+# 1. Download the original dataset to a local dir (see links above).
+# 2. Preprocess it into the audit format (P1 re-encode + P2 filter). The adapter knows
+#    the native layout (GenVidBench Pair{1,2}/<src>/; AIGVDBench reads its HF zips directly):
+python run.py prepare-data genvidbench --source ~/downloads/GenVidBench --out data/gvb --min-frames 16
+python run.py prepare-data aigvdbench  --source ~/downloads/AIGVDBench  --out data/aigvd --min-frames 16
+#    (add --per-source N / --limit N for quick dev runs)
+# 3. Extract features + audit:
 python run.py extract temporalspec --manifest data/gvb/manifest.csv --out features/ts.csv
+python run.py eval --features features/ts.csv
 ```
-**What gets released.** Not the videos — only the *derived* artifacts, which are redistributable: the per-clip **feature tables**, the **LOGO/RvR splits**, the **provenance labels**, the **canonical recipe**, and the **model-weight mirror**. These are a few GB (too large for git), so they will be published to a public mirror (host TBD); you reconstruct the clips themselves locally with `fetch-data`.
+
+`prepare-data` writes a ready-to-extract `manifest.csv` + a `provenance.json` (recipe id, per-source counts, the original download URL). **Add a dataset** = a small adapter mapping its native layout to `Clip`s (`scan(root)`); see `vidaudit/data/datasets/`. The per-clip features you produce are yours to share; VidAudit redistributes nothing. `vidaudit/data/croissant.py` emits ML Croissant metadata for any feature tables you choose to publish.
 
 ## Training
 Training is a first-class, standardized subsystem, not an optional hook. The trainer learns a classifier head over a precomputed feature table (the `extract` output), so it reuses the extract pipeline and never re-decodes video in the loop; preprocessing (median-impute → z-score) matches the audit and is persisted in the checkpoint. Defaults live in `scripts/train/<model>.sh`; loss / optimizer / scheduler / head are name-addressable registries you extend with a one-line decorator, and every knob is overridable on the command line (repeatable `--set key=value`, later wins; unknown keys route to `cfg.extra`):
@@ -217,12 +232,12 @@ OUT=runs/probe scripts/train/mlp-probe.sh features/train.csv \
 - [x] Plugin API (eval / load-weights / train as three orthogonal capabilities)
 - [x] Unified conda environment (pinned + lockfile)
 - [x] Audit engine in `vidaudit/audit/` (matched-cell LOGO + RvR + the metric tuple + both verdicts), reproduces the paper numbers on real feature CSVs
-- [x] `run.py` CLI: `extract`, `eval --features`, `eval --scores`, `train`, `leaderboard`, `fetch-weights`, `fetch-data`
+- [x] `run.py` CLI: `extract`, `eval --features`, `eval --scores`, `train`, `leaderboard`, `prepare-data`, `fetch-weights`
 - [x] Closed extract/train → eval loop: `audit_scores` audits a native or trained head's own scores (no readout) through the same LOGO + RvR + metric tuple + verdicts
 - [x] Detector wrappers for all 8 baselines (auto-download tier + checkpoint tier), each smoke-tested from clips
 - [x] Weight-fetch zoo (`fetch_weights` + `zoo/manifest.yaml`, sha256-verified)
-- [x] Standardized data package: P1 canonical re-encode + P2 length filter + local reconstruct (`fetch-data`) + Croissant emitter
-- [ ] Public release: feature tables + weight mirror + a hosted leaderboard (host TBD) `[planned]`
+- [x] Standardized data package: P1 canonical re-encode + P2 length filter + dataset adapters (GenVidBench, AIGVDBench) + `prepare-data` + Croissant emitter
+- [ ] Dataset adapters for more benchmarks + a hosted leaderboard view `[planned]`
 - [x] Standardized trainer (`TrainConfig` + registries + uniform loop), validated end-to-end on `MLP-Probe`
 - [x] First per-detector recipe: ReStraV trainable head over the standard trainer (`scripts/train/restrav.sh`)
 - [ ] WaveRep / NSG-VD trainable heads `[next]`

@@ -12,3 +12,6 @@ from .base import (  # noqa: F401
     get_dataset,
     register_dataset,
 )
+
+# Built-in dataset adapters register themselves on import.
+from . import aigvdbench, genvidbench  # noqa: F401,E402

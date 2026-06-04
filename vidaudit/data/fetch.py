@@ -12,6 +12,8 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import tempfile
+import zipfile
 from typing import Dict, Optional
 
 import pandas as pd
@@ -79,6 +81,60 @@ def reconstruct(manifest_in: str, out_root: str, *, sources_dir: Optional[str] =
 
     ready = pd.DataFrame(rows, columns=READY_COLS)
     report: Dict = {"recipe": recipe_id(spec), "n_clips": int(len(ready))}
+    if kfilter is not None:
+        ready, kreport = kfilter.apply(ready)
+        report["kfilter"] = kreport
+
+    man_path = os.path.join(out_root, "manifest.csv")
+    ready.to_csv(man_path, index=False)
+    with open(os.path.join(out_root, "provenance.json"), "w") as f:
+        json.dump(report, f, indent=2)
+    return man_path
+
+
+def prepare_dataset(name: str, source_root: str, out_root: str, *,
+                    spec: CanonicalSpec = CANONICAL, kfilter: Optional[KFilter] = None,
+                    limit: Optional[int] = None, per_source: Optional[int] = None) -> str:
+    """Plug-and-play preprocessing: read a registered dataset from its native download
+    layout at `source_root`, apply P1 (canonical re-encode) + P2 (length filter), and
+    write a ready-to-extract manifest + provenance. We never mirror the videos -- the
+    user downloads them from the original release (`spec.download`) and this turns that
+    download into the audit's standardized inputs. `limit` / `per_source` cap the work
+    for dev runs; the full pass is a cluster job.
+    """
+    from vidaudit.data.datasets import get_dataset
+    ds = get_dataset(name)
+    os.makedirs(out_root, exist_ok=True)
+    canon_dir = os.path.join(out_root, "canonical")
+
+    rows, counts = [], {}
+    for clip in ds.scan(source_root):
+        if per_source is not None and counts.get(clip.source, 0) >= per_source:
+            continue
+        if limit is not None and len(rows) >= limit:
+            break
+        dst = os.path.join(canon_dir, name, clip.source, f"{clip.video_id}.mp4")
+        member = (clip.meta or {}).get("member")
+        if member:                                    # video lives inside a zip -> extract, then re-encode
+            with zipfile.ZipFile(clip.meta["zip"]) as z, \
+                    tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tf:
+                tf.write(z.read(member))
+                tmp = tf.name
+            try:
+                canonicalize(tmp, dst, spec)
+            finally:
+                os.remove(tmp)
+        else:
+            canonicalize(clip.path, dst, spec)
+        counts[clip.source] = counts.get(clip.source, 0) + 1
+        rows.append({"video_id": clip.video_id, "generator": clip.source,
+                     "label": "real" if clip.is_real else clip.source,
+                     "is_real": int(clip.is_real), "mp4_path": dst})
+
+    ready = pd.DataFrame(rows, columns=READY_COLS)
+    report: Dict = {"dataset": name, "recipe": recipe_id(spec), "n_clips": int(len(ready)),
+                    "homepage": ds.spec.homepage, "download": ds.spec.download,
+                    "per_source": counts}
     if kfilter is not None:
         ready, kreport = kfilter.apply(ready)
         report["kfilter"] = kreport

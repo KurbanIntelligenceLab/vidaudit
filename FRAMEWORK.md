@@ -76,10 +76,10 @@ waverep:
   license: "NVIDIA non-commercial"
   backbone: dinov2_vitb14
 ```
-`run.py fetch-weights <model>` downloads into `~/.cache/vidaudit/weights/<name>/` and verifies the hash; `run.py eval <model>` auto-fetches if missing, or takes `--weights <path>`. Hosting uses the advisor's funded storage where authors did not release a stable link. Same fetch/verify/cache code path as the data package (`data/fetch.py`).
+`run.py fetch-weights <model>` downloads into `~/.cache/vidaudit/weights/<name>/` and verifies the hash; `run.py extract <model>` takes `--weights <path>`. We mirror nothing: each checkpoint is obtained from its method's original release and passed with `--weights` (FVMD's tracker auto-fetches from its public release); `zoo/manifest.yaml` records a sha256 so it verifies on load.
 
 ## Data package + dataset extensibility
-We **cannot redistribute** GenVidBench / AIGVDBench videos (copyright). The released "dataset" is: per-clip **features** per wrapped detector, the canonical-re-encode + K-filter **recipe**, matched-cell **membership + LOGO splits + provenance labels**, and **Croissant** metadata. `data/fetch.py` reconstructs clips from the original sources on the user's machine.
+We **cannot and do not redistribute or mirror** GenVidBench / AIGVDBench videos (copyright). Users download each benchmark from its **original release**; a dataset adapter (`data/datasets/<name>.py`) reads that native layout and `prepare-data` applies P1 (canonical re-encode) + P2 (length filter) on the user's machine to produce the audited inputs. What is shareable (and what VidAudit provides) is *derived*: the canonical-recipe id, matched-cell membership + LOGO splits + provenance labels, optional **Croissant** metadata, and the per-clip features a user extracts.
 
 **Adding a future dataset is a thin adapter.** Datasets live behind a registry, so the audit pipeline never changes:
 ```python
@@ -112,16 +112,16 @@ vidaudit/
     detectors/   base.py (contract)  registry.py  _extract.py (clips->table)
                  temporalspec.py d3.py restrav.py waverep.py nsgvd.py fvmd.py
                  raft.py clip.py  probe.py (trainable readout)
-    data/        datasets/base.py (Dataset ABC + registry)  datasets/<name>.py
-                 cells.py (matched/LOGO)  canonical.py (P1)  filters.py (P2)
-                 fetch.py (reconstruct)  croissant.py (released-artifact metadata)
+    data/        datasets/base.py (Dataset ABC + registry)  datasets/genvidbench.py
+                 datasets/aigvdbench.py  cells.py (matched/LOGO)  canonical.py (P1)
+                 filters.py (P2)  fetch.py (prepare_dataset)  croissant.py (metadata)
     audit/       protocol.py (P1-P6)  metrics.py  verdict.py  leaderboard.py
     train/       config.py (TrainConfig)  trainer.py (SupervisedTrainer)
                  registries.py (loss/optim/sched/head)  data.py (feature tables)
     features/    mv.py (shared 13-d codec/MV extractor)
   scripts/       train/<model>.sh + README   (defaults + repeatable --set passthrough)
   zoo/           manifest.yaml (weights: url + sha256 + license)
-  run.py         extract | eval | train | leaderboard | fetch-weights | fetch-data
+  run.py         extract | eval | train | leaderboard | prepare-data | fetch-weights
   leaderboard.csv  LEADERBOARD.md  README.md  FRAMEWORK.md
 ```
 
@@ -152,8 +152,8 @@ Excluded for now (no public weights): **DeMamba** (authors withhold, GitHub issu
 1. **Core eval path** : `base.py`, `registry.py`, `run.py`, `audit/{metrics,verdict,leaderboard}.py`, `data/{datasets/base,cells}.py`, reusing the existing matched-cell + LOGO + metric code (`Baselines/evaluate_features.py`, `run_audited_metrics.py`).
 2. **Eval wrappers** for the seed roster (reuse `Baselines/run_*_features.py`). Each yields a leaderboard row and surfaces failing models. (D3-native + NSG-VD audits already run on the cluster: first rows in hand.)
 3. **Training subsystem** : `train/{config,trainer,losses,optim,augment}.py` + `scripts/train/*.sh` + `build_model` / `default_train_config` for the trainable roster (TemporalSpec, ReStraV, WaveRep, NSG-VD); validated end-to-end on at least one.
-4. **Data + weights distribution** : `canonical.py` + `filters.py` + `fetch.py` + the standardized data package + Croissant (HF dataset) + `zoo/manifest.yaml` + weight hosting.
-5. **Release** : leaderboard render + HF Space + README + "add your model in ~30 lines" and "add a dataset in ~20 lines" tutorials.
+4. **Data + weights ingestion** : `canonical.py` + `filters.py` + dataset adapters + `prepare-data` (download-from-original, no mirror) + Croissant + `zoo/manifest.yaml` (sha256-verified, original-release weights).
+5. **Release** : leaderboard render + README + "add your model in ~30 lines" and "add a dataset in ~20 lines" tutorials.
 
 ## Status
 - [x] Plugin API (eval / load-weights / train as three orthogonal capabilities); training first-class
@@ -161,8 +161,8 @@ Excluded for now (no public weights): **DeMamba** (authors withhold, GitHub issu
 - [x] Audit engine (`vidaudit/audit/`): matched-cell LOGO + RvR floor + metric tuple + both verdicts; reproduces the paper numbers on real feature CSVs (ReStraV/TemporalSpec exact, FVMD operating-point exact)
 - [x] `run.py` CLI: `extract` (clips → features), `eval --features` (audit), `leaderboard`
 - [x] All 8 detector wrappers from clips: D3, ReStraV, CLIP, RAFT, TemporalSpec (clone-and-run, verified) + WaveRep, FVMD (checkpoints, verified) + NSG-VD (ADM diffusion + Swin; verifying). Vendored model code in `vidaudit/_vendor/` (PIPs++, NSG-VD), separate from the thin wrappers
-- [x] Weight-fetch zoo (`zoo.py` + `zoo/manifest.yaml`, sha256-verified); checkpoints on cluster permanent storage (public mirror TBD)
+- [x] Weight-fetch zoo (`zoo.py` + `zoo/manifest.yaml`, sha256-verified); checkpoints obtained from each method's original release (not mirrored; FVMD auto-fetches)
 - [x] Standardized trainer (`TrainConfig` + loss/optim/sched/head registries + uniform loop), validated end-to-end on `MLP-Probe`
-- [x] Standardized data package: P1 canonical re-encode + P2 length filter + local reconstruct (`fetch-data`) + Croissant emitter
+- [x] Standardized data package: P1 canonical re-encode + P2 length filter + dataset adapters (GenVidBench, AIGVDBench) + `prepare-data` + Croissant emitter
 - [x] First per-detector training recipe: ReStraV trainable head (`scripts/train/restrav.sh`) over the standard trainer
-- [ ] Public weight mirror + HF dataset + Space; WaveRep/NSG-VD trainable heads; AIGVDBench combined cell (D3 re-run at XCLIP-B/16)
+- [ ] WaveRep/NSG-VD trainable heads; more dataset adapters; a hosted leaderboard view; AIGVDBench combined cell (D3 re-run at XCLIP-B/16)

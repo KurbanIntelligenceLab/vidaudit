@@ -1,10 +1,14 @@
 """Dataset plugin: a benchmark is a thin adapter behind a registry.
 
-Implement `clips()` to yield `Clip` objects with provenance, and declare the
-generators and real sources. The audit pipeline (P1-P6, matched cells, LOGO) is
-dataset-agnostic, so a new dataset gets the metrics, the verdict, and a
-leaderboard section for free. Two real sources or more enable the real-vs-real
-floor (P3); fewer auto-disable it (e.g. AIGVDBench ships a single real source).
+We never redistribute source videos (copyright). Instead, a dataset adapter knows
+the **native download layout** of the original release and maps it into the audit's
+schema. `scan(root)` walks a user's local download (obtained from `spec.download`)
+and yields `Clip` objects with provenance (source, is_real, video_id); the
+preprocessing tool (`vidaudit.data.fetch.prepare_dataset`) then applies P1 (canonical
+re-encode) and P2 (length filter) to produce a ready-to-extract manifest. The audit
+pipeline is dataset-agnostic, so a new benchmark gets the metrics, the verdict, and a
+leaderboard section for free. Two or more real sources enable the real-vs-real floor
+(P3); fewer auto-disable it.
 """
 from __future__ import annotations
 
@@ -22,7 +26,9 @@ class DatasetSpec:
     real_sources: List[str] = field(default_factory=list)
     has_official_split: bool = False
     license_note: str = ""
-    fetch: Optional[Callable] = None   # recipe to reconstruct clips locally (no redistribution)
+    homepage: str = ""                 # official project page / paper
+    download: str = ""                 # where + how to obtain the source videos (we do not mirror)
+    fetch: Optional[Callable] = None   # optional auto-download recipe, when a release permits it
 
     @property
     def supports_rvr(self) -> bool:
@@ -36,13 +42,19 @@ class VideoDataset(ABC):
     spec: DatasetSpec
 
     @abstractmethod
-    def clips(self, split: str = "logo", cell: str = "matched") -> Iterable[Clip]:
-        """Yield Clip objects for the requested split/cell (with provenance set)."""
+    def scan(self, root: str) -> Iterable[Clip]:
+        """Enumerate the dataset from its native download layout at `root`, yielding a
+        `Clip` per video with the *original* file path and provenance set
+        (`source`, `is_real`, `video_id`, `dataset`). A clip backed by a zip member
+        carries `meta={'zip': <zip path>, 'member': <name>}` and `path=<zip path>`.
+        We do not redistribute the videos; users download them from `spec.download`."""
         raise NotImplementedError
 
     def provenance(self) -> dict:
         return {
             "name": self.spec.name,
+            "homepage": self.spec.homepage,
+            "download": self.spec.download,
             "generators": list(self.spec.generators),
             "real_sources": list(self.spec.real_sources),
             "supports_rvr": self.spec.supports_rvr,
