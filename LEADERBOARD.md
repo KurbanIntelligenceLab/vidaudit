@@ -28,6 +28,16 @@ Matched 27k-clip GenVidBench cell, leave-one-generator-out (LOGO). Sorted by LOG
 | **TemporalSpec** (ours) | GenVidBench | full-116k | 0.819 | 0.628 | +0.191 | full unmatched cell |
 | **D3** | AIGVDBench | aigvd-2284 | 0.771 | n/a | n/a | 2025 generators (Wan2.1 0.659); RvR n/a (one real source); run used B/32, re-run at B/16 |
 
+## Pending evaluation
+
+Wrapped and validated, but the full matched-27k run is deferred (see `notes`).
+
+- **Skyra** (Qwen2.5-VL-7B (SFT+RL)): wrapper validated on A100 (verdict + soft score confirmed); full 27k eval ~500 GPU-hr at HF-generate speed (~60-90s/clip) exceeds the 5h budget -> pending a vLLM batched run.
+- **VideoVeritas** (Qwen3-VL-8B): wrapper validated; full 27k eval ~500 GPU-hr (HF generate) exceeds 5h -> pending vLLM batched run.
+- **Ivy-xDetector** (Qwen2.5-VL-3B (IVY-FAKE)): wrapper validated, soft verdict scoring confirmed (0.99x on generated clips); full 27k eval ~190 GPU-hr exceeds 5h -> pending.
+- **L3DE** (DINOv2-G + RAFT + UniDepth-v2 -> 3D-CNN): 3-backbone per-clip cost exceeds 5h; UniDepth-v2 is non-commercial (CC-BY-NC) and needs a separate env -> pending.
+- **STALL** (DINOv3 ViT-L/16 (training-free)): gated DINOv3 backbone not staged + per-clip cost near/over 5h -> pending.
+
 ## Excluded
 
 - **DeMamba** (Mamba SSM): pretrained weights withheld (GitHub issues #5/#16/#21); cannot re-score.

@@ -125,6 +125,17 @@ def render(rows) -> str:
                      f"{_n(r['rvr'])} | {(f'{m:+.3f}') if m is not None else 'n/a'} | {r.get('notes', '')} |")
         L.append("")
 
+    # pending (wrapped + validated, full eval not yet run)
+    pend = [r for r in rows if r["status"] == "pending"]
+    if pend:
+        L.append("## Pending evaluation")
+        L.append("")
+        L.append("Wrapped and validated, but the full matched-27k run is deferred (see `notes`).")
+        L.append("")
+        for r in pend:
+            L.append(f"- **{r['model']}** ({r['backbone']}): {r['notes']}.")
+        L.append("")
+
     # excluded
     excl = [r for r in rows if r["status"] == "excluded"]
     if excl:
