@@ -59,12 +59,13 @@ class MLLMDetector(Detector):
     real_word: str = "real"
     fake_word: str = "fake"
 
-    def __init__(self, n_frames: int = 16, max_new_tokens: int = 1024, device=None):
+    def __init__(self, n_frames: int = 16, max_new_tokens: int = 2048, device=None):
         self.n_frames = n_frames
         self.max_new_tokens = max_new_tokens
         self._device = device
         self._model = None
         self._proc = None
+        self._verdict_cache = None
 
     def _dev(self):
         import torch
@@ -90,15 +91,27 @@ class MLLMDetector(Detector):
             from transformers import AutoModelForImageTextToText, AutoProcessor
             path = self._resolve_model_path()
             self._proc = AutoProcessor.from_pretrained(path)
-            self._model = AutoModelForImageTextToText.from_pretrained(
-                path, torch_dtype=torch.bfloat16).eval().to(self._dev())
+            model, info = AutoModelForImageTextToText.from_pretrained(
+                path, torch_dtype=torch.bfloat16, output_loading_info=True)
+            model = model.eval().to(self._dev())
+            # Some Qwen-VL checkpoints omit lm_head.weight (tied to the input embeddings at
+            # train time); transformers does not always re-tie it on load, leaving a randomly
+            # initialized head that emits garbage. Re-tie from the embeddings when the head
+            # was reported missing (missing_keys is a set on transformers 5.x, a list on 4.x).
+            if any("lm_head" in str(k) for k in (info.get("missing_keys") or [])):
+                import torch as _t
+                with _t.no_grad():
+                    emb = model.get_input_embeddings().weight
+                    model.lm_head.weight.copy_(emb.to(model.lm_head.weight.device,
+                                                       model.lm_head.weight.dtype))
+            self._model = model
         return self._model, self._proc
 
     def load_weights(self, path: Optional[str] = None) -> None:
         """Override the HuggingFace id (or a local path) for the VLM checkpoint."""
         if path:
             self.model_id = path
-        self._model = self._proc = None  # force reload from the new id
+        self._model = self._proc = self._verdict_cache = None  # force reload from the new id
 
     def _frames(self, clip: Clip):
         from vidaudit.detectors._extract import decode_pil
@@ -114,16 +127,21 @@ class MLLMDetector(Detector):
         return proc(text=[text], images=frames, return_tensors="pt").to(self._dev())
 
     def _verdict_token_ids(self):
-        """Single-token ids for the real/fake words (with and without a leading space)."""
+        """All token ids that decode to the real/fake verdict word (any casing / leading
+        space), found by scanning the tokenizer vocab. Robust to the model's emitted casing
+        (e.g. 'Fake' vs 'fake'); cached on first use."""
+        if self._verdict_cache is not None:
+            return self._verdict_cache
         _, proc = self._load()
-        tok = proc.tokenizer
-        ids = {"fake": set(), "real": set()}
-        for word, key in ((self.fake_word, "fake"), (self.real_word, "real")):
-            for variant in (word, " " + word, word.capitalize(), " " + word.capitalize()):
-                enc = tok.encode(variant, add_special_tokens=False)
-                if len(enc) == 1:
-                    ids[key].add(enc[0])
-        return ids["fake"], ids["real"]
+        fake, real = set(), set()
+        for s, tid in proc.tokenizer.get_vocab().items():
+            c = s.replace("Ġ", "").replace("▁", "").strip().lower()  # GPT-2 'G' / SP '_'
+            if c == self.fake_word:
+                fake.add(tid)
+            elif c == self.real_word:
+                real.add(tid)
+        self._verdict_cache = (fake, real)
+        return self._verdict_cache
 
     def score(self, clip: Clip) -> float:
         """p(generated): the softmax mass on the fake vs real verdict token at the answer
@@ -136,24 +154,23 @@ class MLLMDetector(Detector):
             out = model.generate(**inputs, max_new_tokens=self.max_new_tokens, do_sample=False,
                                  output_scores=True, return_dict_in_generate=True)
         gen = out.sequences[0, inputs["input_ids"].shape[1]:]
+        gen_list = gen.tolist()
         text = proc.tokenizer.decode(gen, skip_special_tokens=True)
         fake_ids, real_ids = self._verdict_token_ids()
+        verdict_ids = fake_ids | real_ids
 
-        # soft score: first verdict token emitted after the answer-open tag
-        open_id_seen = False
-        open_tag = self.answer_tags[0]
-        for i, tid in enumerate(gen.tolist()):
-            if not open_id_seen:
-                if open_tag in proc.tokenizer.decode(gen[:i + 1], skip_special_tokens=True):
-                    open_id_seen = True
-                continue
-            if tid in fake_ids or tid in real_ids:
-                logits = out.scores[i][0]
-                lf = max((logits[j].item() for j in fake_ids), default=-1e9)
-                lr = max((logits[j].item() for j in real_ids), default=-1e9)
-                if lf > -1e9 and lr > -1e9:
-                    return verdict_prob(lf, lr)
-                break
+        # soft score: the LAST verdict token the model emits is the final verdict (the
+        # <answer>/<conclusion> word at the end, after any reasoning that may itself mention
+        # "real"/"fake"). Read its fake-vs-real logits at that decode step.
+        if out.scores is not None and verdict_ids:
+            for i in range(len(gen_list) - 1, -1, -1):
+                if gen_list[i] in verdict_ids:
+                    logits = out.scores[i][0]
+                    lf = max((logits[j].item() for j in fake_ids), default=-1e9)
+                    lr = max((logits[j].item() for j in real_ids), default=-1e9)
+                    if lf > -1e9 and lr > -1e9:
+                        return verdict_prob(lf, lr)
+                    break
         verdict = parse_verdict(text, self.real_word, self.fake_word, self.answer_tags)
         return {"fake": 1.0, "real": 0.0}.get(verdict, 0.5)   # hard fallback
 
