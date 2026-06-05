@@ -15,7 +15,7 @@ waverep:
   backbone: "timm vit_base_patch14_reg4_dinov2.lvd142m (img_size=504, num_classes=1)"
   weights:
     - file: weights_dinov2_G4.ckpt
-      url: ""              # not mirrored: obtain from the original release; pass --weights <local ckpt>
+      url: ""              # original GRIP-UNINA release (pass --weights): https://www.grip.unina.it/download/prog/WaveRep_SynthVideoDet/weights_dinov2_G4.ckpt
       sha256: "50d639049d928986ba7d69861a4fe4f3e7afbba1843e3e089cdf6b4748f53d5b"
       size_mb: 331
 
@@ -35,13 +35,13 @@ aigvdet:
   backbone: "two-stream ResNet50 (RGB + RAFT optical-flow visualization)"
   weights:
     - file: original.pth      # spatial branch
-      url: ""                 # not mirrored: authors' Google Drive (academic-only); pass --weights <dir>
+      url: ""                 # Google Drive (academic-only): gdown 10EXwX9cXR0VuBmWq7QpMfotnPtIRKIsV; pass --weights <dir>
       sha256: ""
-      size_mb: null
+      size_mb: 270
     - file: optical.pth       # optical branch
-      url: ""                 # not mirrored: authors' Google Drive (academic-only); pass --weights <dir>
+      url: ""                 # Google Drive (academic-only): gdown 1MiMkASZ-SDisCuLi-A7R-Yvqjzsy_BMC; pass --weights <dir>
       sha256: ""
-      size_mb: null
+      size_mb: 270
 
 nsgvd:
   paper: "Zhang et al., NeurIPS 2025 (arXiv:2510.08073)"
@@ -49,7 +49,7 @@ nsgvd:
   backbone: "SingleSwinBlock diffusion-noise-score discriminator (per-generator ckpts)"
   weights:
     - file: standard-Pika-mp.pth
-      url: ""              # not mirrored: obtain from the original release; pass --weights <local ckpt>
+      url: ""              # original repo ZSHsh98/NSG-VD (pass --weights): https://raw.githubusercontent.com/ZSHsh98/NSG-VD/main/ckpts/standard-Pika-mp.pth
       sha256: "c1d2a9121f5172e79c47ceb15df29987c9828ee03e1fd8302477a8a12bf7599f"
       size_mb: 2
 
@@ -60,7 +60,7 @@ nsgvd-adm:
   license: "OpenAI guided-diffusion (MIT)"
   weights:
     - file: 256x256_diffusion_uncond.pt
-      url: ""              # not mirrored: obtain from the OpenAI guided-diffusion release; pass --weights <local ckpt>
+      url: ""              # OpenAI guided-diffusion (pass --weights): https://openaipublic.blob.core.windows.net/diffusion/jul-2021/256x256_diffusion_uncond.pt
       sha256: "a37c32fffd316cd494cf3f35b339936debdc1576dad13fe57c42399a5dbc78b1"
       size_mb: 2109
 

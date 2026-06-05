@@ -191,15 +191,45 @@ Skyra is the first MLLM-family detector, wrapped via a reusable Qwen-VL adapter 
 
 **STALL** (training-free) and **L3DE** (heavy 3-cue fusion) were also added from the sweep. STALL embeds frames with a frozen DINOv3 ViT-L/16 and scores a clip by a whitened spatial/temporal Gaussian likelihood against a real-video calibration; its upstream repo carries no license, so the scoring math is reimplemented from the paper and the released VATEX calibration file plus the gated DINOv3 backbone are point-to-source. L3DE fuses DINOv2-ViT-G appearance, RAFT flow, and UniDepth-v2 depth in a small 3D-CNN; the UniDepth-v2 dependency makes it **non-commercial (CC-BY-NC-4.0)**, and its sigmoid is p(real), so `score()` returns `1 - sigmoid`. Both are GPU-heavy and join the leaderboard after a cluster run.
 
-**Weight downloads.** FVMD's point tracker auto-fetches from its public release; obtain the others from their original release (below) and pass with `--weights` (or `load_weights(path)`). `zoo/manifest.yaml` records a sha256 per checkpoint so it verifies on load.
+### Downloading the weights
 
-| Checkpoint | Size | Original source |
-|---|---|---|
-| WaveRep `weights_dinov2_G4.ckpt` | 331 MB | WaveRep release ([arXiv:2506.16802](https://arxiv.org/abs/2506.16802)) |
-| NSG-VD `standard-Pika-mp.pth` | 2 MB | NSG-VD release ([arXiv:2510.08073](https://arxiv.org/abs/2510.08073)) |
-| ADM `256x256_diffusion_uncond.pt` | 2.1 GB | [OpenAI guided-diffusion](https://github.com/openai/guided-diffusion) |
+FVMD's tracker and the three MLLMs auto-download on first use (the MLLMs need `pip install qwen-vl-utils accelerate`, plus `modelscope` for VideoVeritas): the hub IDs are `JoeLeelyf/Skyra-RL` (HuggingFace), `EricTanh/VideoVeritas` (ModelScope), and `AI-Safeguard/Ivy-Fake` (HuggingFace). The checkpoint detectors below need a one-time manual fetch from their original release; pass the file(s) with `--weights` (or `load_weights(path)`). `zoo/manifest.yaml` records a sha256 where available, so the checkpoint verifies on load.
 
-Excluded for now (no public weights): **DeMamba** (authors withhold the checkpoints, GitHub issues #5/#16/#21), DeCoF / ATSS / CMTA / VidGuard-R1 (no release). On a "wanted: weights" list.
+**WaveRep** (`weights_dinov2_G4.ckpt`, 331 MB; the DINOv2 backbone auto-downloads):
+```
+wget -nc -P weights "https://www.grip.unina.it/download/prog/WaveRep_SynthVideoDet/weights_dinov2_G4.ckpt"
+```
+
+**NSG-VD** (a per-generator Swin discriminator from the repo + the ADM diffusion model, ~2.1 GB, from OpenAI guided-diffusion):
+```
+git clone https://github.com/ZSHsh98/NSG-VD.git           # ckpts/standard-Pika-mp.pth, standard-SEINE-mp.pth, ...
+wget -O 256x256_diffusion_uncond.pt \
+  https://openaipublic.blob.core.windows.net/diffusion/jul-2021/256x256_diffusion_uncond.pt
+# run: --weights NSG-VD/ckpts/standard-Pika-mp.pth --adm-ckpt 256x256_diffusion_uncond.pt
+```
+
+**AIGVDet** (two ResNet50 branches on the authors' Google Drive; `pip install gdown`):
+```
+gdown 10EXwX9cXR0VuBmWq7QpMfotnPtIRKIsV -O checkpoints/original.pth   # spatial branch
+gdown 1MiMkASZ-SDisCuLi-A7R-Yvqjzsy_BMC -O checkpoints/optical.pth    # optical branch
+# run: --weights checkpoints   (the directory holding original.pth [+ optical.pth])
+```
+
+**L3DE** (`L3DE.pth` on Google Drive; DINOv2-ViT-G via torch.hub and UniDepth-v2 from HuggingFace auto-download). Non-commercial: UniDepth-v2 is CC-BY-NC-4.0.
+```
+gdown --fuzzy "https://drive.google.com/file/d/1wBAAsJPcsT_bIKXetDbd23PKjmCUtb5s/view" -O weights/L3DE.pth
+```
+
+**STALL** (training-free): the VATEX calibration file is committed in the repo; the DINOv3 ViT-L/16 backbone is gated (Meta).
+```
+wget -O stall_params_vatex_dino_v3.npz \
+  https://raw.githubusercontent.com/OmerBenHayun/STALL/main/precomputed/stall_params_vatex_dino_v3.npz
+# DINOv3 ViT-L/16: accept terms at https://ai.meta.com/resources/models-and-libraries/dinov3-downloads/
+#   (or request access at https://huggingface.co/facebook/dinov3-vitl16-pretrain-lvd1689m), place the .pth,
+#   then pass STALL(dinov3_dir=<clone of facebookresearch/dinov3>, dinov3_weights=<.pth>).
+```
+
+Excluded for now (no public weights): **DeMamba** (authors withhold the checkpoints, GitHub issues #5/#16/#21), DeCoF / VidGuard-R1 (no release).
 
 ## Data package
 
