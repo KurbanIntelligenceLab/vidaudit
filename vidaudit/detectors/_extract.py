@@ -18,6 +18,22 @@ import pandas as pd
 
 from vidaudit.detectors.base import Clip, Detector
 
+# Cap how many frames we materialize per clip before sampling. Detectors only need a
+# handful of uniformly sampled frames, but decoding an entire long/high-res clip into RAM
+# spikes memory (a single 4K or multi-minute clip can reach many GB and OOM a batch run).
+# Clips at or under this length are unaffected; longer clips are sampled from this window.
+_MAX_DECODE = 512
+
+
+def _decode_capped(container):
+    """Decode RGB frames up to _MAX_DECODE (bounds per-clip memory)."""
+    out = []
+    for f in container.decode(video=0):
+        out.append(f.to_ndarray(format="rgb24"))
+        if len(out) >= _MAX_DECODE:
+            break
+    return out
+
 
 def decode_clip(path, n_frames: int = 8, size: int = 224, window_sec=None) -> np.ndarray:
     """Decode an mp4 to a [n_frames, size, size, 3] uint8 RGB array.
@@ -35,7 +51,7 @@ def decode_clip(path, n_frames: int = 8, size: int = 224, window_sec=None) -> np
     with av.open(str(path)) as container:
         stream = container.streams.video[0]
         fps = float(stream.average_rate) if stream.average_rate else 24.0
-        frames = [f.to_ndarray(format="rgb24") for f in container.decode(video=0)]
+        frames = _decode_capped(container)
     if not frames:
         raise RuntimeError(f"empty decode: {path}")
     T = len(frames)
@@ -76,7 +92,7 @@ def decode_pil(path, n_frames: int = 12, window_sec=None):
     with av.open(str(path)) as container:
         stream = container.streams.video[0]
         fps = float(stream.average_rate) if stream.average_rate else 24.0
-        frames = [f.to_ndarray(format="rgb24") for f in container.decode(video=0)]
+        frames = _decode_capped(container)
     if not frames:
         raise RuntimeError(f"empty decode: {path}")
     T = len(frames)

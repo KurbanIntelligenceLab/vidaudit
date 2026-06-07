@@ -37,6 +37,7 @@ Wrapped and validated, but the full matched-27k run is deferred (see `notes`).
 - **Ivy-xDetector** (Qwen2.5-VL-3B (IVY-FAKE)): wrapper validated, soft verdict scoring confirmed (0.99x on generated clips); full 27k eval ~190 GPU-hr exceeds 5h -> pending.
 - **L3DE** (DINOv2-G + RAFT + UniDepth-v2 -> 3D-CNN): 3-backbone per-clip cost exceeds 5h; UniDepth-v2 is non-commercial (CC-BY-NC) and needs a separate env -> pending.
 - **STALL** (DINOv3 ViT-L/16 (training-free)): gated DINOv3 backbone not staged + per-clip cost near/over 5h -> pending.
+- **AIGVDet** (two-stream ResNet50 (RGB + RAFT flow)): weights fetched, scores validated (0.25-0.93); full 27k two-stream eval ~7h (>5h budget) -> pending a chunked run.
 
 ## Excluded
 
