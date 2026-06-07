@@ -99,8 +99,7 @@ class MLLMDetector(Detector):
             # initialized head that emits garbage. Re-tie from the embeddings when the head
             # was reported missing (missing_keys is a set on transformers 5.x, a list on 4.x).
             if any("lm_head" in str(k) for k in (info.get("missing_keys") or [])):
-                import torch as _t
-                with _t.no_grad():
+                with torch.no_grad():
                     emb = model.get_input_embeddings().weight
                     model.lm_head.weight.copy_(emb.to(model.lm_head.weight.device,
                                                        model.lm_head.weight.dtype))
