@@ -8,7 +8,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/KurbanIntelligenceLab/vidaudit/actions/workflows/tests.yml"><img alt="tests" src="https://github.com/KurbanIntelligenceLab/vidaudit/actions/workflows/tests.yml/badge.svg"></a>
+  <!-- TESTS-PILL:START -->
+  <img alt="tests" src="https://img.shields.io/badge/tests-156%20passing-brightgreen">
+<!-- TESTS-PILL:END -->
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-green.svg"></a>
   <img alt="Python" src="https://img.shields.io/badge/python-3.14-blue.svg">
   <img alt="Audit protocol" src="https://img.shields.io/badge/audit-P1--P6-8A2BE2.svg">

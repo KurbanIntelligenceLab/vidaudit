@@ -13,10 +13,10 @@ jobs:
       run:
         shell: bash -el {0}   # login shell so `conda activate` works
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up the unified vidaudit env
-        uses: conda-incubator/setup-miniconda@v3
+        uses: conda-incubator/setup-miniconda@v4
         with:
           environment-file: environment.yml
           activate-environment: vidaudit
