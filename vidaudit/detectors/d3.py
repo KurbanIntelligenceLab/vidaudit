@@ -75,4 +75,10 @@ class D3(Detector):
         meaned over dims. The paper's convention is higher = more real; we return it
         negated so higher = more generated (the plugin/audit convention)."""
         d2 = self._delta2(clip)
+        # Degenerate case: exactly 3 frames gives d2 a single row, so the ddof=1 sample
+        # std over time divides by (n-1)=0 and silently returns NaN. A single sample has
+        # no temporal spread, so the defined value is 0 (negated to -0.0, the score sign).
+        # Clips from the normal pipeline are padded to n_frames>=8, so this is robustness only.
+        if d2.shape[0] < 2:
+            return -0.0
         return -float(d2.std(axis=0, ddof=1).mean())

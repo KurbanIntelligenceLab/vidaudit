@@ -35,5 +35,8 @@ data/cache/
 # Big feature dumps (the standardized features ship via the HF dataset, not git);
 # small curated tables (e.g. leaderboard.csv) are tracked explicitly.
 features/
+# but DO track the source package vidaudit/features/ (the codec motion-vector extractor
+# that TemporalSpec and RAFT import); the rule above targets data-dump dirs, not source.
+!vidaudit/features/
 *.features.csv
 !leaderboard.csv

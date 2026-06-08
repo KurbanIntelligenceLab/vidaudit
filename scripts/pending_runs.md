@@ -30,6 +30,11 @@ GPU-hr/model).
    - Skyra: `JoeLeelyf/Skyra-RL` (HF), 16 uniform frames, `<answer>Fake/Real</answer>`.
    - VideoVeritas: `EricTanh/VideoVeritas` (ModelScope), 3 fps, `<answer>real/fake</answer>`.
    - Ivy-xDetector: `AI-Safeguard/Ivy-Fake` (HF, 3B), 1 fps, `<conclusion>real/fake</conclusion>`.
+
+   Frame sampling note: the current HF wrappers (`mllm.py`) sample a uniform `n_frames=16`
+   for all three, so only Skyra matches its native protocol. For a faithful vLLM run, match
+   each model's native rate (VideoVeritas 3 fps, Ivy 1 fps at max 6 frames) or keep the
+   uniform-16 approximation and footnote it on the leaderboard row.
 3. **Verify the tie first.** These checkpoints omit a tied `lm_head`; transformers-5.x left
    it random (garbage output) and we copy the input embeddings into it (see
    `vidaudit/detectors/mllm.py._load`). Confirm vLLM loads `lm_head` correctly on a few
@@ -64,5 +69,8 @@ The VATEX calibration is in the repo
 (`wget https://raw.githubusercontent.com/OmerBenHayun/STALL/main/precomputed/stall_params_vatex_dino_v3.npz`),
 but DINOv3 ViT-L/16 is gated: request access at Meta's DINOv3 downloads page (or HF
 `facebook/dinov3-vitl16-pretrain-lvd1689m`), place the `.pth`, and pass
-`STALL(dinov3_dir=<clone of facebookresearch/dinov3>, dinov3_weights=<.pth>)`. Then run as a
-features detector.
+`STALL(dinov3_dir=<clone of facebookresearch/dinov3>, dinov3_weights=<.pth>)`. Load the
+released calibration npz via `load_weights`, then `extract --kind score` (the native
+`1 - mean-percentile` readout, which is the `native-head` row the leaderboard lists). Its
+`features()` instead emits the 4-d evidence vector [spatial %, temporal %, spatial LL,
+temporal LL] for the L2-LR readout if you want that variant.

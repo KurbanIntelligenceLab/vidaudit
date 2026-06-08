@@ -167,13 +167,24 @@ def extract_table(detector: Detector, clips: Iterable[Clip], *, kind: str = "aut
                    "mp4_path": clip.path}
             if use_feats:
                 v = np.asarray(detector.features(clip), dtype=float).ravel()
+                # Guard: never let an empty or non-finite (NaN/inf) feature row into the
+                # table. A degenerate clip is counted as a failure and skipped, not written as
+                # NaN (or as a feature-less metadata row), which would silently poison the
+                # matched-harness L2-LR readout. np.all(isfinite([])) is vacuously True, so the
+                # size check is needed to also reject an empty vector.
+                if v.size == 0 or not np.all(np.isfinite(v)):
+                    raise ValueError(f"empty or non-finite feature vector from {detector.spec.name}")
                 names = getattr(detector, "feature_names", None)
                 cols = (list(names) if names and len(names) == len(v)
                         else [f"{prefix}_{j}" for j in range(len(v))])
                 for c, val in zip(cols, v):
                     rec[c] = float(val)
             else:
-                rec["score"] = float(detector.score(clip))
+                sc = float(detector.score(clip))
+                # Same guard for the native-score path (a NaN score breaks AUC + operating points).
+                if not np.isfinite(sc):
+                    raise ValueError(f"non-finite score from {detector.spec.name}")
+                rec["score"] = sc
             rows.append(rec)
         except Exception as e:
             n_fail += 1

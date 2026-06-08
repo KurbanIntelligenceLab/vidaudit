@@ -1,0 +1,32 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: pytest (unified conda env)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -el {0}   # login shell so `conda activate` works
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up the unified vidaudit env
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          environment-file: environment.yml
+          activate-environment: vidaudit
+          miniforge-version: latest
+          auto-activate-base: false
+
+      - name: Editable install
+        run: pip install -e . --no-deps
+
+      - name: Run tests and verify the README matrix
+        # --check runs the full suite (failing on any test failure) AND confirms the committed
+        # per-model matrix is current, in a single pass (no duplicate pytest run).
+        run: python scripts/gen_verification_matrix.py --check

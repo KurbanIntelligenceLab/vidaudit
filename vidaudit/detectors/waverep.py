@@ -95,4 +95,13 @@ class WaveRep(Detector):
         x = self._preprocess(frames)
         with torch.no_grad():
             logits = model(x).view(-1).float().cpu().numpy()  # [T]
+        # decode_pil guarantees a non-empty decode in production (it raises on empty and pads
+        # short clips to n_frames), so this guards only an n_frames=0 misconfig / a stubbed
+        # decoder: with no per-frame logits, mean/median would be NaN and max() would raise a
+        # bare ValueError, so refuse with a clear error instead of emitting a silent NaN.
+        if logits.size == 0:
+            raise RuntimeError(
+                "WaveRep.features: decoded clip has no frames (empty decode), so per-frame "
+                "logits is zero-length and cannot be scored. Check the clip path, window_sec, "
+                "and n_frames.")
         return np.array([logits.mean(), float(np.median(logits)), logits.max()], dtype=float)

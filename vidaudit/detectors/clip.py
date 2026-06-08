@@ -49,6 +49,14 @@ class CLIP(Detector):
         from vidaudit.detectors._extract import decode_pil
         model, processor = self._load()
         frames = decode_pil(clip.path, n_frames=self.n_frames)
+        # decode_pil already raises on a truly empty decode and otherwise returns exactly
+        # n_frames frames, so in production this only fires when n_frames is misconfigured to
+        # 0 (or under a stubbed decoder). Guard it regardless: an empty frame list would make
+        # feats.mean(dim=0) a silent all-NaN 512-d vector, so raise a clear error instead.
+        if not frames:
+            raise RuntimeError(
+                f"CLIP.features got zero decoded frames for {clip.path!r} "
+                f"(n_frames={self.n_frames}); cannot compute a mean-pooled embedding.")
         with torch.no_grad():
             inputs = processor(images=frames, return_tensors="pt").to(self._device)
             # explicit CLIP image-embedding path (== get_image_features, but version-stable)

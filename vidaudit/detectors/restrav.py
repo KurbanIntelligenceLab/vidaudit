@@ -69,6 +69,16 @@ class ReStraV(Detector):
         d = delta.norm(dim=-1)                                      # [B, T-1]
         cos = F.cosine_similarity(delta[:, :-1, :], delta[:, 1:, :], dim=-1)  # [B, T-2]
         theta = torch.rad2deg(torch.acos(cos.clamp(-1.0, 1.0)))     # [B, T-2]
+        # Degenerate guard: when either adjacent step vector is zero-norm (a static or
+        # duplicated-frame trajectory) the turning angle is geometrically undefined.
+        # F.cosine_similarity's eps guard silently returns 0.0 there, which acos maps to a
+        # spurious 90deg "turn" for a path that never moves. A non-moving transition has no
+        # turn, so we define theta=0 (no turning) wherever a step has no length, rather than
+        # emitting a confident right angle. Non-degenerate transitions (both steps nonzero)
+        # are untouched, so all existing outputs are preserved exactly.
+        zero_step = d <= 0.0                                        # [B, T-1]
+        undefined = zero_step[:, :-1] | zero_step[:, 1:]            # [B, T-2]
+        theta = torch.where(undefined, torch.zeros_like(theta), theta)
         stats = torch.cat([self._moment4(d), self._moment4(theta)], dim=1)
         return torch.cat([d[:, :7], theta[:, :6], stats], dim=1)    # [B, 21]
 
