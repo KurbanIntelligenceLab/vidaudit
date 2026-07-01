@@ -22,8 +22,6 @@ _REPO = Path(__file__).resolve().parent.parent
 _README = _REPO / "README.md"
 _START = "<!-- VERIFY-MATRIX:START -->"
 _END = "<!-- VERIFY-MATRIX:END -->"
-_PILL_START = "<!-- TESTS-PILL:START -->"
-_PILL_END = "<!-- TESTS-PILL:END -->"
 
 # model display name -> (family, [test files]); the 3 MLLMs share one adapter test file.
 _MODELS = [
@@ -89,23 +87,10 @@ def _matrix(counts) -> str:
     return head + "\n" + "\n".join(rows) + "\n"
 
 
-def _totals(counts):
-    """Sum (passing, failing) across every model row (SKIPPED counts as non-failing)."""
-    tp = tb = 0
-    for _name, _family, files in _MODELS:
-        tp += sum(counts[f].get("PASSED", 0) + counts[f].get("XFAIL", 0)
-                  + counts[f].get("SKIPPED", 0) for f in files)
-        tb += sum(counts[f].get("FAILED", 0) + counts[f].get("ERROR", 0)
-                  + counts[f].get("XPASS", 0) for f in files)
-    return tp, tb
-
-
-def _header_pill(total_pass: int, total_bad: int) -> str:
-    # A STATIC shields.io pill: renders on a private repo, unlike a live Actions badge whose
-    # image request is unauthenticated. Swap back to the Actions badge once the repo is public.
-    if total_bad:
-        return f'  <img alt="tests" src="https://img.shields.io/badge/tests-{total_bad}%20failing-red">\n'
-    return f'  <img alt="tests" src="https://img.shields.io/badge/tests-{total_pass}%20passing-brightgreen">\n'
+# NOTE: the header "tests" pill in README.md is a live GitHub Actions badge
+# (actions/workflows/tests.yml/badge.svg), which GitHub re-renders on every CI run, so it needs
+# no regeneration here. This script only owns the per-model VERIFY-MATRIX below, which has
+# per-model granularity an Actions badge cannot express.
 
 
 def _splice(text: str, body: str, start: str = _START, end: str = _END) -> str:
@@ -123,9 +108,7 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
 
     counts, rc = _run_pytest()
-    total_pass, total_bad = _totals(counts)
     new = _splice(_README.read_text(), _matrix(counts))
-    new = _splice(new, _header_pill(total_pass, total_bad), _PILL_START, _PILL_END)
 
     if args.check:
         if rc != 0:  # report a real test failure as a test failure, not as a stale README

@@ -8,9 +8,7 @@
 </p>
 
 <p align="center">
-  <!-- TESTS-PILL:START -->
-  <img alt="tests" src="https://img.shields.io/badge/tests-156%20passing-brightgreen">
-<!-- TESTS-PILL:END -->
+  <a href="https://github.com/KurbanIntelligenceLab/vidaudit/actions/workflows/tests.yml"><img alt="tests" src="https://github.com/KurbanIntelligenceLab/vidaudit/actions/workflows/tests.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-green.svg"></a>
   <img alt="Python" src="https://img.shields.io/badge/python-3.14-blue.svg">
   <img alt="Audit protocol" src="https://img.shields.io/badge/audit-P1--P6-8A2BE2.svg">
@@ -319,7 +317,19 @@ OUT=runs/probe scripts/train/mlp-probe.sh features/train.csv \
 See `FRAMEWORK.md` for the full design, the plugin contract, and the build phases.
 
 ## Citation
-_To be added after publication._
+If you use VidAudit or its audit protocol, please cite:
+
+```bibtex
+@misc{cakiroglu2026auditinggeneralizationaigeneratedvideo,
+      title={Auditing Generalization in AI-Generated Video Detection: A Six-Control Protocol and the VidAudit Toolkit}, 
+      author={Mert Onur Cakiroglu and Zhihe Lu and Mehmet Dalkilic and Hasan Kurban},
+      year={2026},
+      eprint={2606.31004},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2606.31004}, 
+}
+```
 
 ## License
 VidAudit's own code is **MIT** (see `LICENSE`). That covers only our first-party code: the audit engine, the plugin API, the data package, and the detector wrappers.
@@ -331,7 +341,7 @@ Wrapped detectors, their backbones, and the benchmark datasets keep their origin
 Every wrapped detector, its key backbone/components, the benchmarks, and methods we could not include yet, with their original papers.
 
 **Detectors (model zoo)**
-- **TemporalSpec** (ours; codec motion vectors). VidAudit / WACV 2027. _Citation to be added after publication._
+- **TemporalSpec** (ours; codec motion vectors). M. O. Cakiroglu, Z. Lu, M. Dalkilic, H. Kurban. "Auditing Generalization in AI-Generated Video Detection: A Six-Control Protocol and the VidAudit Toolkit." WACV 2027. [arXiv:2606.31004](https://arxiv.org/abs/2606.31004).
 - **D3** (X-CLIP backbone; training-free). C. Zheng, R. Suo, C. Lin, Z. Zhao, L. Yang, S. Liu, M. Yang, C. Wang, C. Shen. "D³: Training-Free AI-Generated Video Detection Using Second-Order Features." ICCV 2025. [arXiv:2508.00701](https://arxiv.org/abs/2508.00701).
 - **ReStraV** (DINOv2 backbone). C. Internò et al. "AI-Generated Video Detection via Perceptual Straightening." NeurIPS 2025. [arXiv:2507.00583](https://arxiv.org/abs/2507.00583).
 - **WaveRep** (DINOv2 + forensic augmentation). R. Corvi, D. Cozzolino, E. Prashnani, S. De Mello, K. Nagano, L. Verdoliva. "Seeing What Matters: Generalizable AI-Generated Video Detection with Forensic-Oriented Augmentation." NeurIPS 2025. [arXiv:2506.16802](https://arxiv.org/abs/2506.16802).
